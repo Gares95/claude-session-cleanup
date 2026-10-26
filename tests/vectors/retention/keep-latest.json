@@ -1,0 +1,40 @@
+{
+  "format": "session-cleanup/retention-vector",
+  "version": 1,
+  "now": "2026-10-25T12:00:00Z",
+  "description": "The N most recently active groups are kept; the rest are selected.",
+  "policy": {
+    "older_than_hours": null,
+    "keep_latest": 2
+  },
+  "groups": [
+    {
+      "id": "a",
+      "members_hours_ago": [
+        24
+      ]
+    },
+    {
+      "id": "b",
+      "members_hours_ago": [
+        48
+      ]
+    },
+    {
+      "id": "c",
+      "members_hours_ago": [
+        72
+      ]
+    }
+  ],
+  "expected": {
+    "selected": [
+      "c"
+    ],
+    "protected": [
+      "a",
+      "b"
+    ],
+    "excluded": []
+  }
+}

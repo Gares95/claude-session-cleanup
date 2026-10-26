@@ -1,0 +1,47 @@
+{
+  "format": "session-cleanup/retention-vector",
+  "version": 1,
+  "now": "2026-10-25T12:00:00Z",
+  "description": "With both selectors, a group must be older than the cutoff AND outside the latest N.",
+  "policy": {
+    "older_than_hours": 720,
+    "keep_latest": 2
+  },
+  "groups": [
+    {
+      "id": "a",
+      "members_hours_ago": [
+        24
+      ]
+    },
+    {
+      "id": "b",
+      "members_hours_ago": [
+        480
+      ]
+    },
+    {
+      "id": "c",
+      "members_hours_ago": [
+        960
+      ]
+    },
+    {
+      "id": "d",
+      "members_hours_ago": [
+        1200
+      ]
+    }
+  ],
+  "expected": {
+    "selected": [
+      "c",
+      "d"
+    ],
+    "protected": [
+      "a",
+      "b"
+    ],
+    "excluded": []
+  }
+}

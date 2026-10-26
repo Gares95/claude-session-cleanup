@@ -1,0 +1,519 @@
+{
+  "schema": "session-cleanup/preview",
+  "schema_version": 1,
+  "agent": "claude-code",
+  "tool": {
+    "name": "claude-session-cleanup",
+    "version": "0.1.0"
+  },
+  "mode": "preview",
+  "read_only": true,
+  "generated_at": "2026-10-25T12:00:00Z",
+  "environment": {
+    "config_dir": "/home/user/.claude",
+    "config_dir_source": "CLAUDE_CONFIG_DIR",
+    "claude_code_versions_observed": [
+      "2.1.310"
+    ],
+    "tested_claude_code_versions": [
+      "2.1.310"
+    ]
+  },
+  "policy": {
+    "project": {
+      "mode": "current",
+      "path": "/home/user/src/repo"
+    },
+    "older_than_seconds": 2592000,
+    "keep_latest": 2,
+    "min_idle_seconds": 3600,
+    "combination": "intersection",
+    "ranking_unit": "root-session-group",
+    "action": null
+  },
+  "totals": {
+    "groups": {
+      "examined": 6,
+      "selected": 2,
+      "protected": 3,
+      "excluded": 1
+    },
+    "sessions": {
+      "examined": 6,
+      "selected": 2,
+      "protected": 3,
+      "excluded": 1
+    },
+    "bytes": {
+      "examined": 5709,
+      "selected": 2311,
+      "protected": 3182,
+      "excluded": 216
+    },
+    "reasons": {
+      "selected": {
+        "older-than": 2,
+        "outside-latest": 2
+      },
+      "protected": {
+        "newer-than-cutoff": 3,
+        "within-latest": 2
+      },
+      "excluded": {
+        "missing-cwd-evidence": 1
+      }
+    }
+  },
+  "groups": [
+    {
+      "group_id": "aaaa0002-0000-4000-8000-000000000002",
+      "status": "selected",
+      "reasons": [
+        "older-than",
+        "outside-latest"
+      ],
+      "rank": 4,
+      "last_activity": "2026-09-21T12:00:00Z",
+      "last_activity_evidence": {
+        "session_id": "aaaa0002-0000-4000-8000-000000000002",
+        "source": "transcript-mtime"
+      },
+      "bytes": 1008,
+      "session_count": 1,
+      "missing_links": [],
+      "native_retention": {
+        "risk": "past-period"
+      },
+      "mutation_blockers": [],
+      "sessions": [
+        {
+          "session_id": "aaaa0002-0000-4000-8000-000000000002",
+          "role": "root",
+          "title": "Add Stripe webhooks",
+          "title_source": "ai-title",
+          "project": {
+            "storage_dir": "-home-user-src-repo",
+            "identity": "verified",
+            "path": "/home/user/src/repo"
+          },
+          "created_at": "2026-09-21T12:00:00Z",
+          "last_activity": "2026-09-21T12:00:00Z",
+          "last_activity_source": "transcript-mtime",
+          "transcript": {
+            "modified_at": "2026-09-21T12:00:00Z",
+            "bytes": 998
+          },
+          "bytes": 1008,
+          "bytes_by_kind": {
+            "tool_result": 10,
+            "transcript": 998
+          },
+          "artifact_count": 2,
+          "subagent_count": 0,
+          "entrypoints": [
+            "cli"
+          ],
+          "claude_code_versions": [
+            "2.1.310"
+          ],
+          "links": [],
+          "issues": [],
+          "warnings": [],
+          "unknown_associated_artifacts": [],
+          "native_retention": {
+            "transcript_modified_at": "2026-09-21T12:00:00Z",
+            "risk": "past-period"
+          }
+        }
+      ]
+    },
+    {
+      "group_id": "aaaa0001-0000-4000-8000-000000000001",
+      "status": "selected",
+      "reasons": [
+        "older-than",
+        "outside-latest"
+      ],
+      "rank": 5,
+      "last_activity": "2026-09-10T12:00:00Z",
+      "last_activity_evidence": {
+        "session_id": "aaaa0001-0000-4000-8000-000000000001",
+        "source": "transcript-mtime"
+      },
+      "bytes": 1303,
+      "session_count": 1,
+      "missing_links": [],
+      "native_retention": {
+        "risk": "past-period"
+      },
+      "mutation_blockers": [],
+      "sessions": [
+        {
+          "session_id": "aaaa0001-0000-4000-8000-000000000001",
+          "role": "root",
+          "title": "Refactor upload pipeline",
+          "title_source": "custom-title",
+          "project": {
+            "storage_dir": "-home-user-src-repo",
+            "identity": "verified",
+            "path": "/home/user/src/repo"
+          },
+          "created_at": "2026-09-10T12:00:00Z",
+          "last_activity": "2026-09-10T12:00:00Z",
+          "last_activity_source": "transcript-mtime",
+          "transcript": {
+            "modified_at": "2026-09-10T12:00:00Z",
+            "bytes": 1117
+          },
+          "bytes": 1303,
+          "bytes_by_kind": {
+            "file_history": 5,
+            "subagent": 181,
+            "transcript": 1117
+          },
+          "artifact_count": 4,
+          "subagent_count": 1,
+          "entrypoints": [
+            "cli"
+          ],
+          "claude_code_versions": [
+            "2.1.310"
+          ],
+          "links": [],
+          "issues": [],
+          "warnings": [],
+          "unknown_associated_artifacts": [],
+          "native_retention": {
+            "transcript_modified_at": "2026-09-10T12:00:00Z",
+            "risk": "past-period"
+          }
+        }
+      ]
+    },
+    {
+      "group_id": "aaaa0003-0000-4000-8000-000000000003",
+      "status": "protected",
+      "reasons": [
+        "within-latest",
+        "newer-than-cutoff"
+      ],
+      "rank": 1,
+      "last_activity": "2026-10-25T07:00:00Z",
+      "last_activity_evidence": {
+        "session_id": "aaaa0003-0000-4000-8000-000000000003",
+        "source": "subagent-mtime"
+      },
+      "bytes": 1180,
+      "session_count": 1,
+      "missing_links": [],
+      "native_retention": {
+        "risk": "past-period"
+      },
+      "mutation_blockers": [],
+      "sessions": [
+        {
+          "session_id": "aaaa0003-0000-4000-8000-000000000003",
+          "role": "root",
+          "title": "Spike: caching layer",
+          "title_source": "ai-title",
+          "project": {
+            "storage_dir": "-home-user-src-repo",
+            "identity": "verified",
+            "path": "/home/user/src/repo"
+          },
+          "created_at": "2026-09-15T12:00:00Z",
+          "last_activity": "2026-10-25T07:00:00Z",
+          "last_activity_source": "subagent-mtime",
+          "transcript": {
+            "modified_at": "2026-09-15T12:00:00Z",
+            "bytes": 999
+          },
+          "bytes": 1180,
+          "bytes_by_kind": {
+            "subagent": 181,
+            "transcript": 999
+          },
+          "artifact_count": 3,
+          "subagent_count": 1,
+          "entrypoints": [
+            "cli"
+          ],
+          "claude_code_versions": [
+            "2.1.310"
+          ],
+          "links": [],
+          "issues": [],
+          "warnings": [],
+          "unknown_associated_artifacts": [],
+          "native_retention": {
+            "transcript_modified_at": "2026-09-15T12:00:00Z",
+            "risk": "past-period"
+          }
+        }
+      ]
+    },
+    {
+      "group_id": "aaaa0004-0000-4000-8000-000000000004",
+      "status": "protected",
+      "reasons": [
+        "within-latest",
+        "newer-than-cutoff"
+      ],
+      "rank": 2,
+      "last_activity": "2026-10-22T12:00:00Z",
+      "last_activity_evidence": {
+        "session_id": "aaaa0004-0000-4000-8000-000000000004",
+        "source": "transcript-mtime"
+      },
+      "bytes": 1002,
+      "session_count": 1,
+      "missing_links": [],
+      "native_retention": {
+        "risk": "within-period"
+      },
+      "mutation_blockers": [],
+      "sessions": [
+        {
+          "session_id": "aaaa0004-0000-4000-8000-000000000004",
+          "role": "root",
+          "title": "Fix login redirect loop",
+          "title_source": "ai-title",
+          "project": {
+            "storage_dir": "-home-user-src-repo",
+            "identity": "verified",
+            "path": "/home/user/src/repo"
+          },
+          "created_at": "2026-10-22T12:00:00Z",
+          "last_activity": "2026-10-22T12:00:00Z",
+          "last_activity_source": "transcript-mtime",
+          "transcript": {
+            "modified_at": "2026-10-22T12:00:00Z",
+            "bytes": 1002
+          },
+          "bytes": 1002,
+          "bytes_by_kind": {
+            "transcript": 1002
+          },
+          "artifact_count": 1,
+          "subagent_count": 0,
+          "entrypoints": [
+            "cli"
+          ],
+          "claude_code_versions": [
+            "2.1.310"
+          ],
+          "links": [],
+          "issues": [],
+          "warnings": [],
+          "unknown_associated_artifacts": [],
+          "native_retention": {
+            "transcript_modified_at": "2026-10-22T12:00:00Z",
+            "risk": "within-period"
+          }
+        }
+      ]
+    },
+    {
+      "group_id": "aaaa0005-0000-4000-8000-000000000005",
+      "status": "protected",
+      "reasons": [
+        "newer-than-cutoff"
+      ],
+      "rank": 3,
+      "last_activity": "2026-09-29T12:00:00Z",
+      "last_activity_evidence": {
+        "session_id": "aaaa0005-0000-4000-8000-000000000005",
+        "source": "transcript-mtime"
+      },
+      "bytes": 1000,
+      "session_count": 1,
+      "missing_links": [],
+      "native_retention": {
+        "risk": "approaching"
+      },
+      "mutation_blockers": [],
+      "sessions": [
+        {
+          "session_id": "aaaa0005-0000-4000-8000-000000000005",
+          "role": "root",
+          "title": "Upgrade build tooling",
+          "title_source": "ai-title",
+          "project": {
+            "storage_dir": "-home-user-src-repo",
+            "identity": "verified",
+            "path": "/home/user/src/repo"
+          },
+          "created_at": "2026-09-29T12:00:00Z",
+          "last_activity": "2026-09-29T12:00:00Z",
+          "last_activity_source": "transcript-mtime",
+          "transcript": {
+            "modified_at": "2026-09-29T12:00:00Z",
+            "bytes": 1000
+          },
+          "bytes": 1000,
+          "bytes_by_kind": {
+            "transcript": 1000
+          },
+          "artifact_count": 1,
+          "subagent_count": 0,
+          "entrypoints": [
+            "cli"
+          ],
+          "claude_code_versions": [
+            "2.1.310"
+          ],
+          "links": [],
+          "issues": [],
+          "warnings": [],
+          "unknown_associated_artifacts": [],
+          "native_retention": {
+            "transcript_modified_at": "2026-09-29T12:00:00Z",
+            "risk": "approaching"
+          }
+        }
+      ]
+    },
+    {
+      "group_id": "aaaa0006-0000-4000-8000-000000000006",
+      "status": "excluded",
+      "reasons": [
+        "missing-cwd-evidence"
+      ],
+      "rank": null,
+      "last_activity": "2026-09-05T12:00:00Z",
+      "last_activity_evidence": {
+        "session_id": "aaaa0006-0000-4000-8000-000000000006",
+        "source": "transcript-mtime"
+      },
+      "bytes": 216,
+      "session_count": 1,
+      "missing_links": [],
+      "native_retention": {
+        "risk": "past-period"
+      },
+      "mutation_blockers": [
+        "excluded-from-policy"
+      ],
+      "sessions": [
+        {
+          "session_id": "aaaa0006-0000-4000-8000-000000000006",
+          "role": "root",
+          "title": "Synthetic session",
+          "title_source": "ai-title",
+          "project": {
+            "storage_dir": "-home-user-src-repo",
+            "identity": "missing",
+            "path": null
+          },
+          "created_at": null,
+          "last_activity": "2026-09-05T12:00:00Z",
+          "last_activity_source": "transcript-mtime",
+          "transcript": {
+            "modified_at": "2026-09-05T12:00:00Z",
+            "bytes": 216
+          },
+          "bytes": 216,
+          "bytes_by_kind": {
+            "transcript": 216
+          },
+          "artifact_count": 1,
+          "subagent_count": 0,
+          "entrypoints": [],
+          "claude_code_versions": [],
+          "links": [],
+          "issues": [],
+          "warnings": [],
+          "unknown_associated_artifacts": [],
+          "native_retention": {
+            "transcript_modified_at": "2026-09-05T12:00:00Z",
+            "risk": "past-period"
+          }
+        }
+      ]
+    }
+  ],
+  "native_retention": {
+    "disclaimer": "Estimates only. Claude Code deletes transcripts on its own schedule; this tool cannot predict exact deletion times or prevent the deletion.",
+    "observed": {
+      "last_cleanup_marker": null,
+      "last_cleanup_marker_status": "missing",
+      "basis": "transcript file modification time"
+    },
+    "configured": {
+      "default_days": 30,
+      "managed_days": null,
+      "user_days": 30,
+      "applicable_days": [
+        30
+      ],
+      "lowest_applicable_days": 30,
+      "sweep_may_pause": false,
+      "sources": [
+        {
+          "kind": "user",
+          "path": "/home/user/.claude/settings.json",
+          "status": "set",
+          "value_days": 30
+        }
+      ],
+      "complete": false,
+      "limitations": [
+        "MDM profiles, Windows registry policies, and server-managed settings not cached on disk are not inspected.",
+        "Settings passed with --settings, --setting-sources, or by an embedding host are not visible.",
+        "Project settings are read only for projects this preview knows about; any other directory you start Claude Code in can apply a lower value.",
+        "Claude Desktop and Cowork exemptions (desktopSessionCleanupPeriodDays) are not modelled.",
+        "Sweep behaviour differs between Claude Code versions; this model was checked against 2.1.310."
+      ]
+    },
+    "estimates": {
+      "approaching_window_days": 7,
+      "groups_by_risk": {
+        "past-period": 3,
+        "approaching": 1,
+        "within-period": 1
+      },
+      "protected_groups_at_risk": 2,
+      "selected_groups_at_risk": 2
+    }
+  },
+  "activity_detection": {
+    "complete": false,
+    "invoking_session_id": null,
+    "sources": [
+      {
+        "name": "session-registry",
+        "entries": 0,
+        "liveness": {},
+        "unreadable": []
+      },
+      {
+        "name": "background-session-records",
+        "records": 0,
+        "session_ids": 0,
+        "unreadable": []
+      },
+      {
+        "name": "recent-modification-guard",
+        "min_idle_seconds": 3600
+      }
+    ],
+    "not_used": [
+      "claude agents --json"
+    ],
+    "limitations": [
+      "Sessions using a different CLAUDE_CONFIG_DIR or running on another machine are not visible.",
+      "Claude Code versions or surfaces that do not write sessions/<pid>.json are not visible.",
+      "Process liveness is verified against the recorded start time on Linux only; elsewhere a matching PID is treated as possibly running.",
+      "claude agents --json is deliberately not invoked: previews never launch Claude Code."
+    ]
+  },
+  "mutation": {
+    "supported": false,
+    "blockers": [
+      "not-implemented-in-this-version",
+      "no-supported-claude-code-session-mutation-interface",
+      "active-session-detection-incomplete"
+    ]
+  },
+  "warnings": []
+}

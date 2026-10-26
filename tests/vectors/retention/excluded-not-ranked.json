@@ -1,0 +1,42 @@
+{
+  "format": "session-cleanup/retention-vector",
+  "version": 1,
+  "now": "2026-10-25T12:00:00Z",
+  "description": "Groups with unknown metadata are excluded and do not consume latest-N slots.",
+  "policy": {
+    "older_than_hours": null,
+    "keep_latest": 1
+  },
+  "groups": [
+    {
+      "id": "a",
+      "members_hours_ago": [
+        24
+      ],
+      "excluded": true
+    },
+    {
+      "id": "b",
+      "members_hours_ago": [
+        48
+      ]
+    },
+    {
+      "id": "c",
+      "members_hours_ago": [
+        72
+      ]
+    }
+  ],
+  "expected": {
+    "selected": [
+      "c"
+    ],
+    "protected": [
+      "b"
+    ],
+    "excluded": [
+      "a"
+    ]
+  }
+}
