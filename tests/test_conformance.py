@@ -10,6 +10,7 @@ import glob
 import json
 import os
 
+from claude_session_cleanup import report
 from claude_session_cleanup.config import SANITIZE_RE
 from claude_session_cleanup.discovery import SessionUnit, build_groups
 from claude_session_cleanup.fsutil import Issue
@@ -18,7 +19,9 @@ from support import IsolatedTestCase
 
 CONTRACT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "contract")
 CASES = sorted(glob.glob(os.path.join(CONTRACT, "fixtures", "*.json")))
-BACKEND_CAPABILITIES = {"pinning": False}
+# Fixture skips follow the capabilities this backend reports in every preview
+# (contract SPEC section 6), never a separate list.
+BACKEND_CAPABILITIES = {key: value for key, value in report.CAPABILITIES.items() if isinstance(value, bool)}
 
 
 def _unit(spec: dict, now: dt.datetime, children: list[str]) -> SessionUnit:
@@ -66,13 +69,22 @@ class ConformanceTests(IsolatedTestCase):
         for name in ("SPEC.md", "preview-v1.schema.json", "compatibility-matrix.md", "codex-handoff.md"):
             self.assertTrue(os.path.isfile(os.path.join(CONTRACT, name)), name)
 
+    def test_skip_capabilities_are_the_reported_ones(self) -> None:
+        self.factory.session()
+        preview = self.run_json("--keep-latest", "1")
+        reported = {key: value for key, value in preview["capabilities"].items() if isinstance(value, bool)}
+        self.assertEqual(BACKEND_CAPABILITIES, reported)
+        self.assertFalse(reported["pinning"])
+
     def test_contract_fixtures(self) -> None:
         for path in CASES:
             with open(path, encoding="utf-8") as handle:
                 case = json.load(handle)
             with self.subTest(case=case["id"]):
                 self.assertEqual(("session-cleanup/conformance-case", 1), (case["format"], case["version"]))
-                missing = [cap for cap in case["requires"] if not BACKEND_CAPABILITIES.get(cap, False)]
+                unknown = [cap for cap in case["requires"] if cap not in BACKEND_CAPABILITIES]
+                self.assertEqual([], unknown, "fixture requires a capability the contract does not define")
+                missing = [cap for cap in case["requires"] if not BACKEND_CAPABILITIES[cap]]
                 if missing:
                     self.skipTest(f"backend lacks {missing}")
                 actual = evaluate(case)
