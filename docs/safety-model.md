@@ -40,7 +40,7 @@ worktrees, and excludes sessions it cannot verify.
 - A symlinked project storage folder is skipped with a warning.
 - A symlinked transcript, or any link inside a unit that does not point into
   another session's `projects/<storage>/<id>/` directory, excludes the group
-  (`symlink-in-session`).
+  (`unsafe-storage`; the issue code is `symlink-in-session`).
 - Links that do point into another session's data (Claude Code creates them
   for background continuations) are not followed; they join the two sessions
   into one group and add the `cross-session-symlink` mutation blocker.
@@ -94,8 +94,9 @@ format is internal to Claude Code and can change in any release; the tool
 reports `claude-code-version-untested` when transcripts were written by a
 version outside the tested list, and tolerates unknown records.
 
-Validated so far only on Linux (Ubuntu 24.04 under WSL2) with Python 3.12.
-Not yet validated: Python 3.10, 3.11, and 3.13; macOS; Windows. The CI
-workflow covers them but has not run yet. On Windows, process liveness is never probed (`os.kill`
+Validated so far on Linux (Ubuntu 24.04 under WSL2) with Python 3.12, and on
+Windows 10 with Python 3.12 and 3.14 (symlink-dependent tests skip without
+the Windows symlink privilege). Not yet validated: Python 3.10, 3.11, and
+3.13; macOS. The CI workflow covers them but has not run yet. On Windows, process liveness is never probed (`os.kill`
 terminates processes there), so every registry entry counts as possibly
 running.

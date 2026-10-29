@@ -2,7 +2,7 @@
 
 Supports: type (single or list), const, enum, required, properties,
 additionalProperties (bool or schema), items, minItems, minimum, pattern,
-and local ``$ref`` to ``#/$defs/...``.
+and local ``$ref`` to ``#/$defs/...`` (sibling keywords are applied too).
 """
 
 from __future__ import annotations
@@ -28,16 +28,17 @@ def _is_type(value, name: str) -> bool:
 
 def validate(value, schema: dict, root: dict | None = None, path: str = "$") -> list[str]:
     root = root or schema
+    errors: list[str] = []
     if "$ref" in schema:
         target = root
         for part in schema["$ref"].lstrip("#/").split("/"):
             target = target[part]
-        return validate(value, target, root, path)
-    errors: list[str] = []
+        errors += validate(value, target, root, path)
+        schema = {key: item for key, item in schema.items() if key != "$ref"}
     if "type" in schema:
         names = schema["type"] if isinstance(schema["type"], list) else [schema["type"]]
         if not any(_is_type(value, name) for name in names):
-            return [f"{path}: expected {names}, got {type(value).__name__}"]
+            return errors + [f"{path}: expected {names}, got {type(value).__name__}"]
     if "const" in schema and value != schema["const"]:
         errors.append(f"{path}: expected const {schema['const']!r}")
     if "enum" in schema and value not in schema["enum"]:

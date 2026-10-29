@@ -11,24 +11,30 @@ REASON_LABELS = {
     "older-than": "older than cutoff",
     "outside-latest": "outside latest N",
     "invoking-session": "this session",
-    "registered-running": "running (registry)",
-    "registered-possibly-running": "possibly running (registry)",
-    "background-session-record": "background session record",
+    "pinned": "pinned",
+    "running": "running",
+    "possibly-running": "possibly running",
+    "background-session": "background session record",
+    "ephemeral": "ephemeral",
+    "unsafe-runtime-state": "unsafe runtime state",
     "recently-active": "recently active",
     "within-latest": "within latest N",
     "newer-than-cutoff": "newer than cutoff",
-    "missing-cwd-evidence": "no recorded working directory",
+    "related-outside-scope": "linked session in another project",
+    "project-identity-unknown": "no recorded working directory",
     "project-identity-unverified": "project identity unverified",
     "project-path-collision": "different project with the same storage name",
-    "related-session-outside-project": "linked session in another project",
-    "symlink-in-session": "symbolic link in session data",
-    "non-regular-file": "special file in session data",
-    "foreign-owner": "owned by another user",
-    "unreadable": "unreadable",
-    "empty-transcript": "empty transcript",
-    "unparseable-transcript": "unparseable transcript",
+    "metadata-malformed": "unreadable or malformed transcript",
+    "ancestry-ambiguous": "ambiguous session links",
     "duplicate-session-id": "session id in several projects",
+    "unsafe-storage": "unsafe session storage (link, special file, or other owner)",
 }
+STATUS_ROWS = (
+    ("selected", "Would select"),
+    ("retained", "Retained"),
+    ("protected", "Protected"),
+    ("excluded", "Excluded"),
+)
 RISK_LABELS = {
     "past-period": "older than the lowest configured period",
     "approaching": "within 7 days of the lowest configured period",
@@ -113,22 +119,23 @@ def render_text(
     full_ids: bool = False,
     show_titles: bool = True,
 ) -> str:
-    now = _parse(report["generated_at"])
+    now = _parse(report["evaluated_at"])
+    claude = report["extensions"]["claude_code"]
     local = (lambda value: value.astimezone(tz)) if tz is not None else (lambda value: value.astimezone())
     policy = report["policy"]
     totals = report["totals"]
     lines: list[str] = ["Claude Code session retention preview (read-only)", ""]
 
-    project = policy["project"]
-    scope = f"current — {_path(project['path'])}" if project["mode"] == "current" else "all projects"
+    scope_info = report["scope"]
+    scope = f"current — {_path(scope_info['path'])}" if scope_info["mode"] == "current" else "all projects"
     keep = policy["keep_latest"]
     lines += [
-        f"Config:   {_path(report['environment']['config_dir'])} ({report['environment']['config_dir_source']})",
+        f"Config:   {_path(claude['config_dir'])} ({claude['config_dir_source']})",
         f"Project:  {scope}",
         "Policy:   older than "
         + format_duration(policy["older_than_seconds"])
         + " · keep latest "
-        + (f"{keep} session groups" if keep is not None else "not set")
+        + (f"{keep} root groups" if keep is not None else "not set")
         + " · min idle "
         + format_duration(policy["min_idle_seconds"]),
         f"Clock:    {local(now).strftime('%Y-%m-%d %H:%M %Z').strip()}",
@@ -141,7 +148,7 @@ def render_text(
         f"({_plural(sessions['examined'], 'session')}, {format_bytes(sizes['examined'])})"
     )
     lines.append(f"  {'':<13} {'GROUPS':>6} {'SESSIONS':>9} {'SIZE':>10}")
-    for status, label in (("selected", "Would select"), ("protected", "Protected"), ("excluded", "Excluded")):
+    for status, label in STATUS_ROWS:
         lines.append(
             f"  {label:<13} {groups[status]:>6} {sessions[status]:>9} {format_bytes(sizes[status]):>10}"
         )
@@ -163,37 +170,41 @@ def render_text(
             )
             if verbose:
                 lines.append("      reasons: " + ", ".join(REASON_LABELS.get(r, r) for r in group["reasons"]))
-                if group["native_retention"]["risk"] != "within-period":
-                    lines.append("      native cleanup: " + RISK_LABELS[group["native_retention"]["risk"]])
+                risk = group["extensions"]["claude_code"]["native_retention_risk"]
+                if risk != "within-period":
+                    lines.append("      native cleanup: " + RISK_LABELS[risk])
             for session in group["sessions"][1:]:
                 lines.append(
-                    f"      └ linked {_session_id(session['session_id'], full_ids)}  {_title(session, show_titles)}".rstrip()
+                    f"      └ {session['relation']} {_session_id(session['session_id'], full_ids)}  "
+                    f"{_title(session, show_titles)}".rstrip()
                 )
             if verbose:
                 for session in group["sessions"]:
-                    kinds = ", ".join(f"{k} {format_bytes(v)}" for k, v in session["bytes_by_kind"].items())
-                    path = _path(session["project"]["path"] or f"(storage {session['project']['storage_dir']})")
+                    extra = session["extensions"]["claude_code"]
+                    kinds = ", ".join(f"{k} {format_bytes(v)}" for k, v in extra["bytes_by_kind"].items())
+                    path = _path(session["project_path"] or f"(storage {extra['storage_dir']})")
                     lines.append(
                         f"      {_session_id(session['session_id'], full_ids)}: {path} · identity "
-                        f"{session['project']['identity']} · activity from {session['last_activity_source']}"
+                        f"{session['project_identity']} · activity from {session['last_activity_source']}"
                     )
                     if kinds:
                         lines.append(f"        {kinds}")
-                    for item in session["unknown_associated_artifacts"]:
+                    for item in extra["unknown_associated_artifacts"]:
                         lines.append(f"        unknown associated artifact: {_path(item)}")
         lines.append("")
 
     table("selected", "Selected (eligible for a future cleanup action; nothing is changed):")
     if verbose:
-        table("protected", "Protected:")
-        table("excluded", "Excluded (unknown or unsafe metadata; never selected):")
-    for status, label in (("protected", "Protected"), ("excluded", "Excluded")):
-        if totals["reasons"][status]:
-            lines.append(f"{label}: {_reason_summary(totals['reasons'][status])}")
-    if totals["reasons"]["protected"] or totals["reasons"]["excluded"]:
+        table("retained", "Retained by the policy:")
+        table("protected", "Protected by a safety rule:")
+        table("excluded", "Excluded (unknown or unsafe metadata; never selected or ranked):")
+    summaries = [(label, totals["reasons"][status]) for status, label in STATUS_ROWS[1:] if totals["reasons"][status]]
+    for label, reasons in summaries:
+        lines.append(f"{label}: {_reason_summary(reasons)}")
+    if summaries:
         lines.append("")
 
-    native = report["native_retention"]
+    native = claude["native_retention"]
     configured = native["configured"]
     lines.append("Claude Code's own cleanup (estimate; this tool does not control it):")
     if configured["managed_days"] is not None:
@@ -220,18 +231,19 @@ def render_text(
         f"  Transcripts last modified longer ago than that period: {_plural(risk['past-period'], 'group')}; "
         f"within {estimates['approaching_window_days']} days of it: {_plural(risk['approaching'], 'group')}"
     )
-    if estimates["protected_groups_at_risk"]:
+    kept_at_risk = estimates["kept_groups_at_risk"]
+    if kept_at_risk:
         lines.append(
-            f"  {_plural(estimates['protected_groups_at_risk'], 'group')} this policy keeps "
-            f"{'is' if estimates['protected_groups_at_risk'] == 1 else 'are'} past or near that period; "
-            "Claude Code may delete "
-            f"{'it' if estimates['protected_groups_at_risk'] == 1 else 'them'} anyway."
+            f"  {_plural(kept_at_risk, 'group')} this policy keeps "
+            f"{'is' if kept_at_risk == 1 else 'are'} past or near that period; "
+            f"Claude Code may delete {'it' if kept_at_risk == 1 else 'them'} anyway."
         )
     lines.append("  " + native["disclaimer"])
     lines.append("")
 
     for warning in report["warnings"]:
-        lines.append(f"Warning: {warning['code']}: {_path(warning['path'])}")
+        subject = f": {_path(warning['subject'])}" if warning["subject"] else ""
+        lines.append(f"Warning: {warning['code']}{subject}")
     if report["warnings"]:
         lines.append("")
     lines.append(

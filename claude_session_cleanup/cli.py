@@ -25,21 +25,28 @@ MAX_DURATION = dt.timedelta(days=36500)
 DESCRIPTION = """\
 Preview which local Claude Code sessions a retention policy would select.
 
-This release is read-only: it never moves, renames, edits, or deletes
-anything, and it never launches Claude Code. It reports which root session
-groups (a session plus its subagents and linked continuations) a policy would
-select, which are protected and why, which are excluded because their
-metadata is unknown or unsafe, and how Claude Code's own cleanupPeriodDays
-sweep is configured.
+This release is read-only: it has no archive, quarantine, restore, or delete
+functionality, never changes any file, and never launches Claude Code. It
+reports which root groups (a session plus its subagents and linked
+continuations) a policy would select, which are retained or protected and
+why, which are excluded because their metadata is unknown or unsafe, and how
+Claude Code's own cleanupPeriodDays sweep is configured.
 """
 
 EPILOG = """\
-policy semantics:
+policy semantics (shared contract with codex-session-cleanup, contract/SPEC.md):
   --older-than and --keep-latest combine with intersection: a group is
   selected only if it is older than the cutoff AND outside the latest N.
-  Last activity is the newest evidence across a group's transcripts,
-  subagents, tool results, and checkpoints. --keep-latest counts session
-  groups, newest first, ties broken by session id.
+  A group's last activity is the newest evidence across its transcripts,
+  subagents, tool results, and checkpoints, so a recent member keeps an old
+  root. --keep-latest counts root groups, newest first, ties broken by id;
+  protected groups occupy ranks, excluded groups do not.
+
+statuses:
+  selected   eligible for a future cleanup action (nothing happens now)
+  retained   kept by the policy (newer than cutoff, within latest N)
+  protected  kept by a safety rule (this session, running, recently active)
+  excluded   unknown or unsafe metadata; never selected or ranked
 
 examples:
   claude-session-cleanup --older-than 7d
@@ -47,6 +54,7 @@ examples:
   claude-session-cleanup --older-than 30d --keep-latest 10 --verbose
   claude-session-cleanup --older-than 90d --project all --json
 
+The JSON report follows contract/preview-v1.schema.json (schema_version 1).
 exit status: 0 preview printed, 1 safety stop, 2 usage error.
 """
 
@@ -92,14 +100,14 @@ def argument_parser() -> argparse.ArgumentParser:
     policy.add_argument("--older-than", type=parse_duration, metavar="DURATION",
                         help="select groups whose last activity is older than DURATION (e.g. 48h, 30d)")
     policy.add_argument("--keep-latest", type=positive_int, metavar="N",
-                        help="always keep the N most recently active session groups")
+                        help="retain the N most recently active root groups")
     policy.add_argument("--project", choices=("current", "all"), default="current",
                         help="'current' (default): only the exact current directory; 'all': every project")
     policy.add_argument("--min-idle", type=parse_duration, default=dt.timedelta(hours=1), metavar="DURATION",
                         help="protect groups with any activity within DURATION (default: 1h)")
     output = parser.add_argument_group("output")
-    output.add_argument("--json", action="store_true", help="print the versioned JSON report instead of text")
-    output.add_argument("--verbose", action="store_true", help="list protected and excluded groups with details")
+    output.add_argument("--json", action="store_true", help="print the shared JSON preview (schema_version 1) instead of text")
+    output.add_argument("--verbose", action="store_true", help="list retained, protected, and excluded groups with details")
     output.add_argument("--full-ids", action="store_true", help="show full session ids in text output")
     output.add_argument("--no-titles", action="store_true", help="hide session titles in text output")
     output.add_argument("--include-titles", action="store_true",

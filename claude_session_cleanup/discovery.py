@@ -1,4 +1,4 @@
-"""Read-only discovery of Claude Code session units and session groups.
+"""Read-only discovery of Claude Code session units and root groups.
 
 A *session unit* is one top-level transcript plus everything Claude Code keys
 by that session id: the ``projects/<dir>/<id>/`` directory (subagent
@@ -6,7 +6,7 @@ transcripts, tool results, MCP task state, title sidecar), set-aside
 transcript copies, and per-session directories at the top of the
 configuration directory such as ``file-history/<id>/``.
 
-A *session group* joins units that Claude Code links explicitly
+A *root group* joins units that Claude Code links explicitly
 (``continued-in`` records, written when a conversation continues in a
 background session). Retention is decided per group.
 
@@ -114,10 +114,15 @@ class SessionUnit:
 @dataclasses.dataclass(frozen=True)
 class SessionGroup:
     group_id: str  # the root session id
-    members: tuple[SessionUnit, ...]  # root first, then by session id
+    members: tuple[SessionUnit, ...]  # root first, then by depth, activity (newest first), id
     last_activity: dt.datetime
     last_activity_session: str
     missing_links: tuple[str, ...]
+    parents: tuple[tuple[str, str], ...] = ()  # (member, parent member)
+    ancestry_ambiguous: bool = False
+
+    def parent_of(self, session_id: str) -> str | None:
+        return dict(self.parents).get(session_id)
 
     @property
     def bytes(self) -> int:
@@ -368,31 +373,37 @@ def _build_unit(
 
 
 def build_groups(units: tuple[SessionUnit, ...]) -> tuple[tuple[SessionGroup, ...], tuple[DiscoveryWarning, ...]]:
+    """Join units linked by Claude Code into root groups.
+
+    ``continued-in`` points from an origin to its continuation; a shared-data
+    symlink points from a continuation back to its origin. Either way the
+    continuation's parent is the origin. A group whose links do not form a
+    single tree (several origins, conflicting parents, unreachable members)
+    is marked ancestry-ambiguous.
+    """
     by_id = {unit.session_id: unit for unit in units}
-    parent = {session_id: session_id for session_id in by_id}
+    union = {session_id: session_id for session_id in by_id}
 
     def find(item: str) -> str:
-        while parent[item] != item:
-            parent[item] = parent[parent[item]]
-            item = parent[item]
+        while union[item] != item:
+            union[item] = union[union[item]]
+            item = union[item]
         return item
 
     warnings: list[DiscoveryWarning] = []
     missing: dict[str, list[str]] = {}
-    not_root: set[str] = set()
+    parents: dict[str, set[str]] = {}
     for unit in units:
-        # continued-in points from the origin to its continuation; a shared-data
-        # symlink points from the continuation back to the origin.
-        edges = [(target, target) for target in unit.continued_in]
-        edges += [(target, unit.session_id) for target in unit.shared_data_links]
-        for target, successor in edges:
+        edges = [(target, unit.session_id, target) for target in unit.continued_in]
+        edges += [(target, target, unit.session_id) for target in unit.shared_data_links]
+        for target, parent, child in edges:
             if target not in by_id:
                 missing.setdefault(unit.session_id, []).append(target)
                 continue
-            not_root.add(successor)
+            parents.setdefault(child, set()).add(parent)
             left, right = find(unit.session_id), find(target)
             if left != right:
-                parent[max(left, right)] = min(left, right)
+                union[max(left, right)] = min(left, right)
 
     components: dict[str, list[SessionUnit]] = {}
     for session_id in sorted(by_id):
@@ -400,9 +411,29 @@ def build_groups(units: tuple[SessionUnit, ...]) -> tuple[tuple[SessionGroup, ..
 
     groups: list[SessionGroup] = []
     for members in components.values():
-        roots = sorted(unit.session_id for unit in members if unit.session_id not in not_root)
-        root_id = roots[0] if roots else min(unit.session_id for unit in members)
-        ordered = sorted(members, key=lambda unit: (unit.session_id != root_id, unit.session_id))
+        ids = {unit.session_id for unit in members}
+        roots = sorted(session_id for session_id in ids if session_id not in parents)
+        root_id = roots[0] if roots else min(ids)
+        ambiguous = len(roots) != 1 or any(len(parents[i]) > 1 for i in ids if i in parents)
+        parent_of = {child: min(found) for child, found in parents.items() if child in ids}
+        depth = {root_id: 0}
+        frontier = [root_id]
+        while frontier:
+            current = frontier.pop()
+            for child, parent in parent_of.items():
+                if parent == current and child not in depth:
+                    depth[child] = depth[current] + 1
+                    frontier.append(child)
+        if len(depth) != len(ids):
+            ambiguous = True
+        ordered = sorted(
+            members,
+            key=lambda unit: (
+                depth.get(unit.session_id, len(ids)),
+                -unit.last_activity.timestamp(),
+                unit.session_id,
+            ),
+        )
         newest = max(ordered, key=lambda unit: (unit.last_activity, unit.session_id))
         group_missing = sorted({target for unit in ordered for target in missing.get(unit.session_id, ())})
         for target in group_missing:
@@ -414,6 +445,8 @@ def build_groups(units: tuple[SessionUnit, ...]) -> tuple[tuple[SessionGroup, ..
                 last_activity=newest.last_activity,
                 last_activity_session=newest.session_id,
                 missing_links=tuple(group_missing),
+                parents=tuple(sorted(parent_of.items())),
+                ancestry_ambiguous=ambiguous,
             )
         )
     groups.sort(key=lambda group: group.group_id)

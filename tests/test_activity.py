@@ -64,10 +64,10 @@ class SignalTests(IsolatedTestCase):
         signals = activity.detect_activity(self.config(), {}, platform="linux", proc_root=proc)
         self.assertEqual(
             {
-                running: "registered-running",
-                unknown: "registered-possibly-running",
-                session_uuid(5): "background-session-record",
-                session_uuid(6): "background-session-record",
+                running: "running",
+                unknown: "possibly-running",
+                session_uuid(5): "background-session",
+                session_uuid(6): "background-session",
             },
             signals.protections(),
         )
@@ -99,6 +99,9 @@ class SignalTests(IsolatedTestCase):
         fake_proc(proc, 400, "77")
         self.factory.registry(400, sid, "77")
         report = self.run_json("--older-than", "7d", liveness_options={"platform": "linux", "proc_root": proc})
-        self.assertEqual(["registered-running"], report["groups"][0]["reasons"])
-        self.assertFalse(report["activity_detection"]["complete"])
-        self.assertIn("active-session-detection-incomplete", report["mutation"]["blockers"])
+        self.assertEqual(["running"], report["groups"][0]["reasons"])
+        self.assertEqual("protected", report["groups"][0]["status"])
+        claude = report["extensions"]["claude_code"]
+        self.assertFalse(claude["activity_detection"]["complete"])
+        self.assertIn("active-session-detection-incomplete", claude["mutation_blockers"])
+        self.assertEqual("partial", report["capabilities"]["active_session_detection"])

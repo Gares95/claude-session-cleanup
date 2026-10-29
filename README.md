@@ -4,7 +4,7 @@ Read-only inspection and retention planning for local Claude Code sessions.
 
 `claude-session-cleanup` shows which of your Claude Code sessions a retention
 policy such as "older than 30 days, but keep my latest 10" would select, which
-are protected and why, and which it refuses to judge because their metadata is
+it keeps and why, and which it refuses to judge because their metadata is
 unknown or unsafe. It also tells you how Claude Code's own `cleanupPeriodDays`
 cleanup is configured, and which sessions you are keeping that it may delete
 anyway.
@@ -41,9 +41,12 @@ preview.
   data.
 - Selects sessions with `--older-than` and `--keep-latest`, combined by
   intersection, for the exact current directory or, explicitly, all projects.
-- Decides per **root session group**: a session plus its subagents and any
-  sessions Claude Code links to it (background continuations). Recent
-  activity anywhere in a group protects the whole group.
+- Decides per **root group**: a session plus its subagents and any sessions
+  Claude Code links to it (background continuations). Recent activity
+  anywhere in a group keeps the whole group.
+- Reports every group as **selected**, **retained** (kept by the policy),
+  **protected** (kept by a safety rule), or **excluded** (unknown or unsafe
+  metadata).
 - Protects the session you are running it from, sessions registered as
   running, background-session records, and anything active within the last
   hour.
@@ -51,8 +54,9 @@ preview.
   project identity, symbolic links that leave session data, unreadable or
   empty transcripts, and other unknown metadata.
 - Reports sizes per session and per kind of data.
-- Prints a terminal preview or a versioned JSON report
-  ([docs/json-contract.md](docs/json-contract.md)).
+- Prints a terminal preview or the versioned JSON preview shared with
+  `codex-session-cleanup` ([contract/](contract/SPEC.md),
+  [docs/json-contract.md](docs/json-contract.md)).
 
 ## Requirements
 
@@ -66,9 +70,9 @@ Validation status:
 | Environment | Status |
 |---|---|
 | Linux (Ubuntu 24.04 under WSL2), Python 3.12 | Test suite passes; read-only run against a real configuration directory |
-| Python 3.10, 3.11, 3.13 | Not yet validated (CI job configured, not yet run) |
+| Windows 10, Python 3.12 and 3.14 | Test suite passes (13 symlink tests and 1 FIFO test skip without symlink privilege); read-only run against a real Windows configuration directory |
+| Python 3.10, 3.11, 3.13 | Not yet validated (CI job configured, not yet run; source passes a Python 3.10 grammar check) |
 | macOS | Not yet validated (CI job configured, not yet run) |
-| Windows | Not yet validated (CI job configured, not yet run) |
 
 ## Install
 
@@ -107,7 +111,7 @@ claude-session-cleanup`). The tool writes no files of its own.
 # Sessions in this exact directory inactive for more than 7 days
 claude-session-cleanup --older-than 7d
 
-# Everything except the 5 most recently active session groups
+# Everything except the 5 most recently active root groups
 claude-session-cleanup --keep-latest 5
 
 # Older than 30 days AND outside the latest 10, with details
@@ -120,12 +124,12 @@ claude-session-cleanup --older-than 90d --project all --json
 | Option | Meaning |
 |---|---|
 | `--older-than DURATION` | Select groups whose last activity is older than `DURATION` (`48h`, `30d`; whole hours or days) |
-| `--keep-latest N` | Keep the `N` most recently active session groups |
+| `--keep-latest N` | Retain the `N` most recently active root groups |
 | `--project current\|all` | `current` (default): the exact current directory only. `all`: every project |
 | `--min-idle DURATION` | Protect groups with any activity within `DURATION` (default `1h`) |
 | `--json` | Print the JSON report instead of text |
 | `--include-titles` | Include session titles in JSON (omitted by default; titles can contain prompt text) |
-| `--verbose` | List protected and excluded groups, reasons, and per-kind sizes |
+| `--verbose` | List retained, protected, and excluded groups, reasons, and per-kind sizes |
 | `--full-ids` / `--no-titles` | Text-output display options |
 | `--config-dir PATH` | Inspect another Claude Code configuration directory |
 
@@ -138,7 +142,8 @@ Example output (synthetic data; see [examples/](examples/)):
 Examined 6 groups (6 sessions, 5.6 KB)
                 GROUPS  SESSIONS       SIZE
   Would select       2         2     2.3 KB
-  Protected          3         3     3.1 KB
+  Retained           3         3     3.1 KB
+  Protected          0         0        0 B
   Excluded           1         1      216 B
 
 Selected (eligible for a future cleanup action; nothing is changed):
@@ -146,7 +151,7 @@ Selected (eligible for a future cleanup action; nothing is changed):
   2026-09-21 12:00  34d      1008 B  aaaa0002  Add Stripe webhooks
   2026-09-10 12:00  45d      1.3 KB  aaaa0001  Refactor upload pipeline
 
-Protected: newer than cutoff: 3 · within latest N: 2
+Retained: newer than cutoff: 3 · within latest N: 2
 Excluded: no recorded working directory: 1
 
 Claude Code's own cleanup (estimate; this tool does not control it):
@@ -159,15 +164,20 @@ Claude Code's own cleanup (estimate; this tool does not control it):
 
 ## How decisions are made
 
-Full rules: [docs/retention-semantics.md](docs/retention-semantics.md).
+These semantics are a shared contract with
+[codex-session-cleanup](https://github.com/Gares95/codex-session-cleanup):
+[contract/SPEC.md](contract/SPEC.md), with Claude Code specifics in
+[docs/retention-semantics.md](docs/retention-semantics.md).
 
 - **Last activity** is the newest evidence across a group: transcript and
   subagent modification times, tool results, checkpoints, and message
   timestamps. Imprecision always errs toward keeping.
-- **`--keep-latest N`** ranks groups newest first, ties broken by session id.
+- **`--keep-latest N`** ranks groups newest first, ties broken by root id.
   A group counts once however many sessions it contains. Protected groups
   occupy ranks; excluded groups do not, so unknown data can only cause more
   sessions to be kept.
+- **Statuses** take precedence in this order: excluded, protected, retained,
+  selected.
 - **Exact project matching.** The invoking directory is resolved through
   symlinks. A session belongs to it only if a working directory recorded in
   the transcript encodes to exactly the storage folder that holds it, and
@@ -201,6 +211,9 @@ override it. This tool never changes your settings.
   given.
 - Never follows symbolic links inside session data; titles and paths are
   stripped of terminal control characters.
+- JSON previews contain local paths and full session ids (and titles with
+  `--include-titles`). Treat them as private: if you save one inside a
+  repository, put it under an ignored directory such as `.local/`.
 - See [docs/safety-model.md](docs/safety-model.md) for limitations, including
   why active-session detection is incomplete.
 
@@ -212,9 +225,11 @@ python3 -m unittest discover -s tests -v
 
 The suite runs on synthetic configuration directories, fails any test that
 touches the real `~/.claude`, starts a process, or sends a signal, and needs
-no dependencies. Retention behaviour is also captured as agent-neutral
-vectors in `tests/vectors/retention/` for reuse by
-[codex-session-cleanup](https://github.com/Gares95/codex-session-cleanup).
+no dependencies. It also runs the agent-neutral conformance fixtures in
+[`contract/fixtures/`](contract/fixtures/), which
+[codex-session-cleanup](https://github.com/Gares95/codex-session-cleanup) is
+to run against its own engine (see
+[contract/compatibility-matrix.md](contract/compatibility-matrix.md)).
 
 ## License
 

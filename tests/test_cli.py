@@ -12,7 +12,7 @@ from support import IsolatedTestCase, allow_processes, snapshot_tree
 
 DAY = dt.timedelta(days=1)
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-with open(os.path.join(ROOT, "schemas", "preview-v1.json"), encoding="utf-8") as _handle:
+with open(os.path.join(ROOT, "contract", "preview-v1.schema.json"), encoding="utf-8") as _handle:
     SCHEMA = json.load(_handle)
 
 
@@ -42,7 +42,8 @@ class ArgumentTests(IsolatedTestCase):
         with redirect_stdout(out), self.assertRaises(SystemExit):
             cli.run(["--help"])
         text = out.getvalue()
-        for phrase in ("read-only", "intersection", "--keep-latest counts session", "never launches Claude Code"):
+        for phrase in ("read-only", "intersection", "--keep-latest counts root groups", "never launches Claude Code",
+                       "no archive, quarantine, restore, or delete", "retained", "excluded"):
             self.assertIn(phrase, " ".join(text.split()))
 
     def test_missing_config_dir_is_a_safety_stop(self) -> None:
@@ -76,12 +77,17 @@ class OutputTests(IsolatedTestCase):
 
     def test_contract_envelope(self) -> None:
         report = self.run_json("--older-than", "30d")
-        self.assertEqual(("session-cleanup/preview", 1, "claude-code", "preview", True),
+        self.assertEqual(("session-cleanup/preview", 1, "claude-code", "preview", False),
                          (report["schema"], report["schema_version"], report["agent"], report["mode"],
-                          report["read_only"]))
-        self.assertEqual({"supported": False}, {"supported": report["mutation"]["supported"]})
-        self.assertIsNone(report["policy"]["action"])
-        self.assertEqual("root-session-group", report["policy"]["ranking_unit"])
+                          report["changes_made"]))
+        actions = report["capabilities"]["actions"]
+        self.assertFalse(any(action["supported"] for action in actions.values()))
+        self.assertEqual("read-only-release", actions["quarantine"]["unsupported_reason"])
+        self.assertIsNone(report["policy"]["requested_action"])
+        self.assertEqual("root-group", report["policy"]["ranking_unit"])
+        self.assertEqual("2026-09-25T12:00:00Z", report["policy"]["cutoff"])
+        self.assertEqual(("derived", True), (report["activity_timestamp"]["kind"],
+                                             report["activity_timestamp"]["conservative"]))
 
     def test_text_and_json_agree(self) -> None:
         old, recent, excluded = self.populate()
@@ -92,6 +98,7 @@ class OutputTests(IsolatedTestCase):
             self.assertIn(group["group_id"][:8], text)
         totals = report["totals"]["groups"]
         self.assertIn(f"Would select  {totals['selected']:>6} ", text)
+        self.assertIn(f"Retained      {totals['retained']:>6} ", text)
         self.assertIn(f"Protected     {totals['protected']:>6} ", text)
         self.assertIn(f"Excluded      {totals['excluded']:>6} ", text)
         self.assertTrue(text.rstrip().endswith("No changes made."))
@@ -124,7 +131,7 @@ class OutputTests(IsolatedTestCase):
     def test_untested_version_is_warned(self) -> None:
         self.factory.session(version="9.9.9")
         report = self.run_json("--older-than", "30d")
-        self.assertIn({"code": "claude-code-version-untested", "path": "9.9.9"}, report["warnings"])
+        self.assertIn({"code": "claude-code-version-untested", "subject": "9.9.9"}, report["warnings"])
 
 
 class ReadOnlyTests(IsolatedTestCase):

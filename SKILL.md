@@ -16,13 +16,15 @@ Choose only these arguments:
 - "older than 48 hours / 7 days" → `--older-than 48h` / `--older-than 7d`
   (positive whole hours or days).
 - "keep my latest 5" → `--keep-latest 5`.
-- Both constraints → pass both; they combine by intersection (a session group
-  must be older than the cutoff *and* outside the latest N).
+- Both constraints → pass both; they combine by intersection (a root group
+  must be older than the cutoff *and* outside the latest N). Latest N counts
+  root groups: a session with its subagents and linked continuations counts
+  once.
 - Use the default `--project current` unless the user explicitly asks about
   all projects; then add `--project all`.
 - At least one selector is required. For a vague request ("clean up my
   sessions"), ask for an age or a count, and say this tool only previews.
-- Add `--verbose` when the user wants reasons for protected or excluded
+- Add `--verbose` when the user wants reasons for retained, protected, or excluded
   sessions.
 
 Do not invent flags. There is no `--apply`, `--action`, archive, quarantine,
@@ -43,10 +45,10 @@ titles unless `--include-titles` is passed.
 
 Summarize:
 
-- how many session groups would be selected, protected, and excluded, with
-  sizes;
-- the main protection reasons (latest N, newer than cutoff, this session,
-  running, recently active);
+- how many root groups would be selected, retained, protected, and
+  excluded, with sizes;
+- why groups are retained (within the latest N, newer than the cutoff) and
+  protected (this session, running, background session, recently active);
 - any excluded groups and why (the tool refuses to judge unknown or unsafe
   metadata);
 - the "Claude Code's own cleanup" section: configured period, and any

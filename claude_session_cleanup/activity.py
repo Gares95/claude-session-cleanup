@@ -65,11 +65,11 @@ class ActivitySignals:
         reasons: dict[str, str] = {}
         for entry in self.registry:
             if entry.liveness == "running":
-                reasons[entry.session_id] = "registered-running"
+                reasons[entry.session_id] = "running"
             elif entry.liveness == "possibly-running":
-                reasons.setdefault(entry.session_id, "registered-possibly-running")
+                reasons.setdefault(entry.session_id, "possibly-running")
         for session_id in self.background_session_ids:
-            reasons.setdefault(session_id, "background-session-record")
+            reasons.setdefault(session_id, "background-session")
         return reasons
 
 

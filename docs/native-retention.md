@@ -24,8 +24,12 @@ Verified on Claude Code 2.1.310 with synthetic data in an isolated
 - `cleanupPeriodDays` may be set in any settings file. The sweep uses the
   merged settings of the session that runs it, so starting Claude Code in a
   repository whose committed `.claude/settings.json` sets a low value deletes
-  older transcripts of **every** project. (Observed with `claude -p`; not
-  verified for interactive sessions in untrusted folders.)
+  older transcripts of **every** project. Observed with `claude -p` (which
+  skips the folder-trust prompt). In interactive mode, an untrusted folder's
+  trust prompt held the session and no sweep ran while it was shown; after
+  trust was accepted, no sweep ran within 13 minutes in an isolated test (no
+  model request was ever made and a sweep had run on the machine within 24
+  hours), so the interactive case remains unverified.
 - Managed settings override every other source. If a settings file cannot be
   read or is invalid, Claude Code may pause the sweep.
 - Claude Desktop and Cowork transcripts follow

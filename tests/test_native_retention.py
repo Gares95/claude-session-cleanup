@@ -83,14 +83,15 @@ class ReportingTests(IsolatedTestCase):
         kept = self.factory.session(age=45 * DAY)  # kept by keep-latest, older than 30 days
         self.factory.session(age=60 * DAY)
         report = self.run_json("--keep-latest", "1")
-        estimates = report["native_retention"]["estimates"]
-        self.assertEqual(1, estimates["protected_groups_at_risk"])
+        native_report = report["extensions"]["claude_code"]["native_retention"]
+        estimates = native_report["estimates"]
+        self.assertEqual(1, estimates["kept_groups_at_risk"])
         self.assertEqual(1, estimates["selected_groups_at_risk"])
         group = next(g for g in report["groups"] if g["group_id"] == kept)
-        self.assertEqual("past-period", group["native_retention"]["risk"])
+        self.assertEqual("past-period", group["extensions"]["claude_code"]["native_retention_risk"])
         # Observed metadata is reported; no projected deletion timestamp appears anywhere.
-        self.assertIn("transcript_modified_at", group["sessions"][0]["native_retention"])
-        flat = repr(report["native_retention"]) + repr(group["native_retention"])
+        self.assertIn("transcript_modified_at", group["sessions"][0]["extensions"]["claude_code"])
+        flat = repr(native_report) + repr(group["extensions"])
         self.assertNotRegex(flat, r"delet\w*_(at|on|after)")
         code, text, _ = self.run_cli("--keep-latest", "1")
         self.assertIn("1 group this policy keeps is past or near that period; Claude Code may delete it anyway.", text)
@@ -103,7 +104,7 @@ class ReportingTests(IsolatedTestCase):
         self.factory.session(other, age=40 * DAY)
         self.factory.write_json(os.path.join(other, ".claude", "settings.json"), {"cleanupPeriodDays": 7})
         report = self.run_json("--older-than", "1d", "--project", "all")
-        configured = report["native_retention"]["configured"]
+        configured = report["extensions"]["claude_code"]["native_retention"]["configured"]
         self.assertEqual(7, configured["lowest_applicable_days"])
         self.assertIn({"kind": "project-shared", "path": os.path.join(other, ".claude", "settings.json"),
                        "status": "set", "value_days": 7}, configured["sources"])

@@ -2,13 +2,14 @@ Claude Code session retention preview (read-only)
 
 Config:   /home/user/.claude (CLAUDE_CONFIG_DIR)
 Project:  current — /home/user/src/repo
-Policy:   older than 30 days · keep latest 2 session groups · min idle 1 hour
+Policy:   older than 30 days · keep latest 2 root groups · min idle 1 hour
 Clock:    2026-10-25 12:00 UTC
 
 Examined 6 groups (6 sessions, 5.6 KB)
                 GROUPS  SESSIONS       SIZE
   Would select       2         2     2.3 KB
-  Protected          3         3     3.1 KB
+  Retained           3         3     3.1 KB
+  Protected          0         0        0 B
   Excluded           1         1      216 B
 
 Selected (eligible for a future cleanup action; nothing is changed):
@@ -24,7 +25,7 @@ Selected (eligible for a future cleanup action; nothing is changed):
       aaaa0001: /home/user/src/repo · identity verified · activity from transcript-mtime
         file_history 5 B, subagent 181 B, transcript 1.1 KB
 
-Protected:
+Retained by the policy:
   LAST ACTIVITY     AGE    SIZE      SESSION   TITLE
   2026-10-25 07:00  5h       1.2 KB  aaaa0003  Spike: caching layer
       reasons: within latest N, newer than cutoff
@@ -41,15 +42,15 @@ Protected:
       aaaa0005: /home/user/src/repo · identity verified · activity from transcript-mtime
         transcript 1000 B
 
-Excluded (unknown or unsafe metadata; never selected):
+Excluded (unknown or unsafe metadata; never selected or ranked):
   LAST ACTIVITY     AGE    SIZE      SESSION   TITLE
   2026-09-05 12:00  50d       216 B  aaaa0006  Synthetic session
       reasons: no recorded working directory
       native cleanup: older than the lowest configured period
-      aaaa0006: (storage -home-user-src-repo) · identity missing · activity from transcript-mtime
+      aaaa0006: (storage -home-user-src-repo) · identity unknown · activity from transcript-mtime
         transcript 216 B
 
-Protected: newer than cutoff: 3 · within latest N: 2
+Retained: newer than cutoff: 3 · within latest N: 2
 Excluded: no recorded working directory: 1
 
 Claude Code's own cleanup (estimate; this tool does not control it):
