@@ -1,5 +1,7 @@
 # claude-session-cleanup
 
+[![tests](https://github.com/Gares95/claude-session-cleanup/actions/workflows/tests.yml/badge.svg)](https://github.com/Gares95/claude-session-cleanup/actions/workflows/tests.yml)
+
 Read-only inspection and retention planning for local Claude Code sessions.
 
 `claude-session-cleanup` shows which of your Claude Code sessions a retention
@@ -71,13 +73,10 @@ Validation status:
 |---|---|
 | Linux (Ubuntu 24.04 under WSL2), Python 3.12 | Test suite passes; read-only run against a real configuration directory |
 | Windows 10, Python 3.12 and 3.14 | Test suite passes (13 symlink tests and 1 FIFO test skip without symlink privilege); read-only run against a real Windows configuration directory |
-| Python 3.10, 3.11, 3.13 | Not yet validated (CI job configured, not yet run; source passes a Python 3.10 grammar check) |
-| macOS | Not yet validated (CI job configured, not yet run) |
+| Linux, macOS, Windows × Python 3.10–3.13 | Test suite runs in [CI](https://github.com/Gares95/claude-session-cleanup/actions/workflows/tests.yml) on every push |
+| macOS | Not yet run against a real configuration directory |
 
 ## Install
-
-The repository is not published yet; the URLs below are its intended home.
-Until then, use a local checkout.
 
 As a Claude Code skill (user scope):
 
@@ -202,6 +201,43 @@ The report separates three things
 To make Claude Code keep transcripts much longer, set `"cleanupPeriodDays":
 3650` in `~/.claude/settings.json`. Project and managed settings can still
 override it. This tool never changes your settings.
+
+## Archive, quarantine, and delete
+
+These words mean different things here and in
+[codex-session-cleanup](https://github.com/Gares95/codex-session-cleanup), and
+are never used interchangeably ([contract/SPEC.md](contract/SPEC.md)):
+
+- **Archive** is an operation the agent itself provides and can undo. Codex
+  has one; Claude Code does not, so this tool offers no archive.
+- **Quarantine** would be a reversible move managed by this tool. It is a
+  possible future action, not implemented.
+- **Permanent delete** is irreversible. This tool never deletes anything.
+  Claude Code's own `cleanupPeriodDays` sweep and `claude purge` are permanent
+  deletes performed by Claude Code, not by this tool.
+
+"Selected" therefore means only "a future cleanup action could act on this";
+nothing happens to selected sessions.
+
+## Limitations
+
+- **Read-only.** There is nothing to apply; use the preview to decide, then
+  act yourself if you want to.
+- **Active-session detection is partial.** Claude Code keeps no complete list
+  of running sessions. The tool combines its session registry, background
+  session records, the invoking session, and a one-hour minimum-idle guard.
+  Registry entries are verified by process start time on Linux only;
+  elsewhere a registered process that may still exist counts as possibly
+  running. Sessions under another `CLAUDE_CONFIG_DIR` or on another machine
+  are not visible.
+- **Undocumented storage.** The layout under `~/.claude/` is internal to
+  Claude Code and can change in any release. Transcripts from untested
+  versions produce a `claude-code-version-untested` warning.
+- **No pinning.** Claude Code has no pin or favourite marker, so pinned
+  sessions cannot be protected (`capabilities.pinning: false`).
+- **Estimates for Claude Code's own cleanup.** The tool cannot see settings of
+  projects it does not know about, nor predict when Claude Code next runs its
+  sweep.
 
 ## Privacy and safety
 

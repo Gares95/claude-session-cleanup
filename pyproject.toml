@@ -18,6 +18,10 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 
+[project.urls]
+Homepage = "https://github.com/Gares95/claude-session-cleanup"
+Issues = "https://github.com/Gares95/claude-session-cleanup/issues"
+
 [project.scripts]
 claude-session-cleanup = "claude_session_cleanup.cli:main"
 

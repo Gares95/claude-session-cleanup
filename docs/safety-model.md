@@ -96,7 +96,8 @@ version outside the tested list, and tolerates unknown records.
 
 Validated so far on Linux (Ubuntu 24.04 under WSL2) with Python 3.12, and on
 Windows 10 with Python 3.12 and 3.14 (symlink-dependent tests skip without
-the Windows symlink privilege). Not yet validated: Python 3.10, 3.11, and
-3.13; macOS. The CI workflow covers them but has not run yet. On Windows, process liveness is never probed (`os.kill`
+the Windows symlink privilege). The CI workflow runs the test suite on Linux,
+macOS, and Windows with Python 3.10 to 3.13; macOS has not been run against a
+real configuration directory. On Windows, process liveness is never probed (`os.kill`
 terminates processes there), so every registry entry counts as possibly
 running.
