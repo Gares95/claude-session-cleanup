@@ -5,4 +5,16 @@ __pycache__/
 .DS_Store
 .env
 *.log
+
+# Private notes, experiments, and saved previews (local paths, session ids, titles)
 .local/
+
+# Packaging and virtual environments
+build/
+dist/
+*.egg-info/
+.venv/
+venv/
+
+# Claude Code per-user project settings (permission approvals)
+.claude/settings.local.json
