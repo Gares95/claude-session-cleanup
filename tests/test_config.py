@@ -32,13 +32,16 @@ class SanitizeTests(IsolatedTestCase):
 
 class PathTests(IsolatedTestCase):
     def test_recorded_paths_are_normalized_lexically(self) -> None:
-        self.assertEqual("/a/b", config.normalize_recorded_path("/a/./b/"))
+        root = os.path.abspath(os.sep)
+        a_b = os.path.join(root, "a", "b")
+        self.assertEqual(a_b, config.normalize_recorded_path(os.path.join(root, "a", ".", "b") + os.sep))
         self.assertIsNone(config.normalize_recorded_path("relative/path"))
         self.assertIsNone(config.normalize_recorded_path(""))
-        self.assertIsNone(config.normalize_recorded_path("/a\x00b"))
+        self.assertIsNone(config.normalize_recorded_path(a_b + "\x00"))
         self.assertIsNone(config.normalize_recorded_path(42))
         # NFD input is normalized to NFC.
-        self.assertEqual("/caf\u00e9", config.normalize_recorded_path("/cafe\u0301"))
+        self.assertEqual(os.path.join(root, "caf\u00e9"),
+                         config.normalize_recorded_path(os.path.join(root, "cafe\u0301")))
 
     @requires_symlinks
     def test_invoking_directory_is_resolved_through_symlinks(self) -> None:

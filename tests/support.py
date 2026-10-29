@@ -157,7 +157,10 @@ def session_uuid(number: int) -> str:
 
 def set_age(path: str, age: dt.timedelta) -> None:
     stamp = (NOW - age).timestamp()
-    os.utime(path, (stamp, stamp), follow_symlinks=False)
+    if os.utime in os.supports_follow_symlinks:
+        os.utime(path, (stamp, stamp), follow_symlinks=False)
+    else:  # Windows: utime cannot target a link itself
+        os.utime(path, (stamp, stamp))
 
 
 def iso(value: dt.datetime) -> str:
