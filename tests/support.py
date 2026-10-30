@@ -149,6 +149,10 @@ def _symlinks_supported() -> bool:
 
 
 requires_symlinks = unittest.skipUnless(_symlinks_supported(), "symbolic links are not available")
+requires_symlink_timestamps = unittest.skipUnless(
+    os.utime in os.supports_follow_symlinks,
+    "symbolic-link timestamps are not available",
+)
 
 
 def session_uuid(number: int) -> str:

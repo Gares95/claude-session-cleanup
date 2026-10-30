@@ -3,7 +3,14 @@ import os
 
 from claude_session_cleanup.errors import CleanupError
 from claude_session_cleanup.policy import Policy, build_plan
-from support import NOW, IsolatedTestCase, requires_symlinks, session_uuid, set_age
+from support import (
+    NOW,
+    IsolatedTestCase,
+    requires_symlinks,
+    requires_symlink_timestamps,
+    session_uuid,
+    set_age,
+)
 
 DAY = dt.timedelta(days=1)
 
@@ -239,6 +246,7 @@ class EngineValidationTests(IsolatedTestCase):
 
 class SharedDataPolicyTests(IsolatedTestCase):
     @requires_symlinks
+    @requires_symlink_timestamps
     def test_recent_continuation_sharing_subagent_data_protects_origin(self) -> None:
         origin = self.factory.session(session_id=session_uuid(1), age=60 * DAY, subagents=(("a1", 60 * DAY),))
         continuation = self.factory.session(session_id=session_uuid(2), age=DAY)
