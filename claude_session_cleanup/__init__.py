@@ -1,6 +1,6 @@
 """Read-only inspection and retention planning for local Claude Code sessions."""
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 
 # Claude Code versions whose on-disk layout this release was checked against.
 # Previews still run on other versions, with a warning.

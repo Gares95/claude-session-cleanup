@@ -1,6 +1,6 @@
 # Safety model
 
-## Version 0.1 guarantees
+## Version 1.0 guarantees
 
 - **No writes.** The tool opens files read-only and creates, modifies,
   renames, and deletes nothing. It writes only to standard output and

@@ -12,7 +12,7 @@ cleanup is configured, and which sessions you are keeping that it may delete
 anyway.
 
 > [!IMPORTANT]
-> **Version 0.1 is a read-only first implementation.** It has no archive,
+> **Version 1.0 is read-only.** It has no archive,
 > quarantine, restore, or delete functionality. It never moves, renames,
 > edits, or deletes anything, and it never launches Claude Code. Any future
 > cleanup action is blocked on the safety requirements listed in
@@ -62,8 +62,7 @@ preview.
 
 ## Requirements
 
-- Python 3.10 or newer is the intended floor. Standard library only; no
-  dependencies.
+- Python 3.10 or newer. Standard library only; no dependencies.
 - Checked against the storage layout of Claude Code 2.1.310. Other versions
   run with a warning.
 
@@ -72,7 +71,7 @@ Validation status:
 | Environment | Status |
 |---|---|
 | Linux (Ubuntu 24.04 under WSL2), Python 3.12 | Test suite passes; read-only run against a real configuration directory |
-| Windows 10, Python 3.12 and 3.14 | Test suite passes (13 symlink tests and 1 FIFO test skip without symlink privilege); read-only run against a real Windows configuration directory |
+| Windows 10, Python 3.12 and 3.14 | Test suite passes (symlink and FIFO tests skip without symlink privilege); read-only run against a real Windows configuration directory |
 | Linux, macOS, Windows × Python 3.10–3.13 | Test suite runs in [CI](https://github.com/Gares95/claude-session-cleanup/actions/workflows/tests.yml) on every push |
 | macOS | Not yet run against a real configuration directory |
 
@@ -263,8 +262,8 @@ The suite runs on synthetic configuration directories, fails any test that
 touches the real `~/.claude`, starts a process, or sends a signal, and needs
 no dependencies. It also runs the agent-neutral conformance fixtures in
 [`contract/fixtures/`](contract/fixtures/), which
-[codex-session-cleanup](https://github.com/Gares95/codex-session-cleanup) is
-to run against its own engine (see
+[codex-session-cleanup](https://github.com/Gares95/codex-session-cleanup) also
+runs against its own engine (see
 [contract/compatibility-matrix.md](contract/compatibility-matrix.md)).
 
 ## License
