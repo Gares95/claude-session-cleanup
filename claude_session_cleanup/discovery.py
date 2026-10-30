@@ -165,6 +165,18 @@ def _identity(dir_name: str, summary: TranscriptSummary | None) -> tuple[str, st
     return "unverified", None, recorded
 
 
+def _comparison_path(path: str) -> str:
+    """Normalize equivalent Windows extended paths for lexical containment."""
+    normalized = os.path.normpath(path)
+    if os.name != "nt":
+        return normalized
+    if normalized.startswith("\\\\?\\UNC\\"):
+        return "\\\\" + normalized[8:]
+    if normalized.startswith("\\\\?\\"):
+        return normalized[4:]
+    return normalized
+
+
 def _session_link_target(config: ConfigDir, link: str) -> str | None:
     """Return the session id whose ``projects/<dir>/<id>/`` data a symlink points into.
 
@@ -177,8 +189,12 @@ def _session_link_target(config: ConfigDir, link: str) -> str | None:
         target = os.readlink(link)
     except OSError:
         return None
-    absolute = os.path.normpath(os.path.join(os.path.dirname(link), target))
-    rel = os.path.relpath(absolute, config.projects)
+    absolute = _comparison_path(os.path.join(os.path.dirname(link), target))
+    projects = _comparison_path(config.projects)
+    try:
+        rel = os.path.relpath(absolute, projects)
+    except ValueError:
+        return None
     parts = rel.split(os.sep)
     if rel.startswith(os.pardir) or os.path.isabs(rel) or len(parts) < 3:
         return None

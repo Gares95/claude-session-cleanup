@@ -159,7 +159,10 @@ def set_age(path: str, age: dt.timedelta) -> None:
     stamp = (NOW - age).timestamp()
     if os.utime in os.supports_follow_symlinks:
         os.utime(path, (stamp, stamp), follow_symlinks=False)
-    else:  # Windows: utime cannot target a link itself
+    elif os.path.islink(path):
+        # Do not follow a synthetic link merely to adjust test metadata.
+        return
+    else:
         os.utime(path, (stamp, stamp))
 
 
