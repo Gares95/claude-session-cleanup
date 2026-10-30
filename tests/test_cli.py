@@ -155,8 +155,9 @@ class EntryPointTests(IsolatedTestCase):
     def test_skill_script_runs_standalone(self) -> None:
         # Run outside the guard: a real interpreter process on a synthetic config directory.
         script = os.path.join(ROOT, "scripts", "cleanup_sessions.py")
-        env = {"PATH": os.environ.get("PATH", ""), "CLAUDE_CONFIG_DIR": self.factory.config,
-               "HOME": os.environ["HOME"], "PYTHONDONTWRITEBYTECODE": "1"}
+        env = dict(os.environ)
+        env.update({"CLAUDE_CONFIG_DIR": self.factory.config,
+                    "HOME": os.environ["HOME"], "PYTHONDONTWRITEBYTECODE": "1"})
         with allow_processes():
             completed = subprocess.run([sys.executable, "-I", script, "--older-than", "1d"],
                                        cwd=self.factory.default_project, env=env,
