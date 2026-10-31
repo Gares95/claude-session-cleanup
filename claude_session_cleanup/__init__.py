@@ -1,6 +1,6 @@
 """Retention previews and reviewed permanent deletion for local Claude Code sessions."""
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 # Claude Code versions whose on-disk layout this release was checked against.
 # Previews still run on other versions, with a warning.

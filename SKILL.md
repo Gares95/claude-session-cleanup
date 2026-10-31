@@ -30,6 +30,16 @@ Choose only these arguments:
 - Add `--action delete` only when the user asks to delete sessions. "Clean
   up" alone is not a request to delete: preview and ask.
 
+Examples:
+
+| Request | What to do |
+|---|---|
+| "Preview Claude sessions older than 7 days." | Preview `--older-than 7d` |
+| "Keep my latest 5 Claude conversations." | Preview `--keep-latest 5`; ask whether the user wants the others deleted |
+| "Delete Claude sessions older than 30 days." | Preview `--older-than 30d --action delete`, then follow "Delete" below |
+| "Delete old Claude conversations for this project." | Ask for an age or a count first; then as above |
+| "Clean up Claude." | Ask what to clean; this tool only handles session retention |
+
 Do not invent flags. There is no `--apply`, archive, quarantine, or restore.
 Never offer `claude purge` as a substitute for deleting selected sessions: it
 removes a whole project's data, including its auto memory.

@@ -84,6 +84,18 @@ Validation status:
 | Linux, macOS, Windows × Python 3.10–3.13 | Test suite runs in [CI](https://github.com/Gares95/claude-session-cleanup/actions/workflows/tests.yml) on every push |
 | macOS | Not yet run against a real configuration directory |
 
+Platform support:
+
+| Platform | Preview | Permanent delete |
+|---|---|---|
+| Linux | Yes | Yes, through a reviewed saved plan |
+| macOS | Yes | No: reported as unsupported (`blocked-by-safety-requirements`) |
+| Windows | Yes | No: reported as unsupported (`blocked-by-safety-requirements`) |
+
+Deletion needs the Linux process scan to rule out running sessions. CI also
+runs the deletion tests on macOS against a simulated Linux process table;
+that checks the deletion logic, not native macOS support, which stays off.
+
 ## Install
 
 As a Claude Code skill (user scope):
@@ -286,7 +298,8 @@ happens to selected sessions.
 ## Limitations
 
 - **Deletion is Linux-only.** It needs the Linux process scan; on macOS and
-  Windows the preview reports `delete` as unsupported and `--save-plan`
+  Windows the preview reports `delete` as unsupported
+  (`blocked-by-safety-requirements`) and `--save-plan`
   refuses.
 - **Active-session detection is partial.** Claude Code keeps no complete list
   of running sessions. The tool combines its session registry, background

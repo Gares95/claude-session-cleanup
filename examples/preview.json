@@ -5,7 +5,7 @@
   "agent_version": null,
   "tool": {
     "name": "claude-session-cleanup",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "mode": "preview",
   "changes_made": false,
