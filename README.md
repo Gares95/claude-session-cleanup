@@ -1,6 +1,9 @@
 # claude-session-cleanup
 
 [![tests](https://github.com/Gares95/claude-session-cleanup/actions/workflows/tests.yml/badge.svg)](https://github.com/Gares95/claude-session-cleanup/actions/workflows/tests.yml)
+[![release](https://img.shields.io/github/v/release/Gares95/claude-session-cleanup)](https://github.com/Gares95/claude-session-cleanup/releases/latest)
+[![python](https://img.shields.io/badge/python-3.10%2B-blue)](pyproject.toml)
+[![license](https://img.shields.io/github/license/Gares95/claude-session-cleanup)](LICENSE)
 
 Retention previews and reviewed permanent deletion for local Claude Code
 sessions.
@@ -13,12 +16,30 @@ cleanup is configured, and which sessions you are keeping that it may delete
 anyway. On Linux it can then permanently delete the selected conversations,
 but only through a plan you saved and reviewed.
 
+Using Codex instead? See
+[`codex-session-cleanup`](https://github.com/Gares95/codex-session-cleanup).
+Both tools follow the same retention rules through a
+[shared cleanup contract](contract/SPEC.md); the cleanup actions each one
+offers differ.
+
 > [!IMPORTANT]
 > **Every run is a read-only preview** unless you pass `--apply-plan`.
 > Permanent deletion is irreversible, Linux-only, and always takes three
 > steps: preview, save a plan, apply that plan. There is no `--apply`, no
 > archive, and no quarantine or restore. The tool never launches Claude Code.
 > See [docs/safety-model.md](docs/safety-model.md).
+
+## Platform support
+
+| Platform | Preview | Permanent delete |
+|---|---|---|
+| Linux | Yes | Yes, through a reviewed saved plan |
+| macOS | Yes | No: reported as unsupported (`blocked-by-safety-requirements`) |
+| Windows | Yes | No: reported as unsupported (`blocked-by-safety-requirements`) |
+
+Deletion needs the Linux process scan to rule out running sessions. CI also
+runs the deletion tests on macOS against a simulated Linux process table;
+that checks the deletion logic, not native macOS support, which stays off.
 
 ## Why
 
@@ -84,18 +105,6 @@ Validation status:
 | Linux, macOS, Windows × Python 3.10–3.13 | Test suite runs in [CI](https://github.com/Gares95/claude-session-cleanup/actions/workflows/tests.yml) on every push |
 | macOS | Not yet run against a real configuration directory |
 
-Platform support:
-
-| Platform | Preview | Permanent delete |
-|---|---|---|
-| Linux | Yes | Yes, through a reviewed saved plan |
-| macOS | Yes | No: reported as unsupported (`blocked-by-safety-requirements`) |
-| Windows | Yes | No: reported as unsupported (`blocked-by-safety-requirements`) |
-
-Deletion needs the Linux process scan to rule out running sessions. CI also
-runs the deletion tests on macOS against a simulated Linux process table;
-that checks the deletion logic, not native macOS support, which stays off.
-
 ## Install
 
 As a Claude Code skill (user scope):
@@ -122,16 +131,24 @@ python3 path/to/claude-session-cleanup/scripts/cleanup_sessions.py --help
 ```
 
 Uninstall by deleting the cloned directory (or `pipx uninstall
-claude-session-cleanup`). The tool writes no files of its own.
+claude-session-cleanup`). The tool keeps no state or configuration of its
+own: it writes a file only when you ask it to save a deletion plan. Remove
+saved plans yourself when you no longer need them.
 
 ## Usage
 
 ```bash
-# Sessions in this exact directory inactive for more than 7 days
-claude-session-cleanup --older-than 7d
+# Preview sessions in this exact directory inactive for more than 30 days
+claude-session-cleanup --older-than 30d
 
-# Everything except the 5 most recently active root groups
+# Preview keeping only the 5 most recently active conversations
 claude-session-cleanup --keep-latest 5
+
+# Delete sessions older than 30 days (Linux): save a plan, review it, then apply
+# it; see "Permanent deletion" below
+mkdir -p .local
+claude-session-cleanup --older-than 30d --action delete --save-plan .local/delete-plan.json
+claude-session-cleanup --apply-plan .local/delete-plan.json
 
 # Older than 30 days AND outside the latest 10, with details
 claude-session-cleanup --older-than 30d --keep-latest 10 --verbose
@@ -198,7 +215,8 @@ cd /path/to/project
 # 1. Preview what would be deleted, with reasons and sizes
 claude-session-cleanup --older-than 30d --action delete --verbose
 
-# 2. Save the plan to a private, ignored location
+# 2. Save the plan to a private, ignored location (the directory must exist)
+mkdir -p .local
 claude-session-cleanup --older-than 30d --action delete --save-plan .local/delete-plan.json
 
 # 3. Review the printed preview (and the plan file if you like)
