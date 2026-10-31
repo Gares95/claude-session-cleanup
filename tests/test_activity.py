@@ -3,16 +3,13 @@ import os
 
 from claude_session_cleanup import activity
 from claude_session_cleanup.config import ConfigDir
-from support import IsolatedTestCase, session_uuid
+from support import IsolatedTestCase, fake_process, session_uuid
 
 DAY = dt.timedelta(days=1)
 
 
 def fake_proc(root: str, pid: int, start_time: str) -> None:
-    os.makedirs(os.path.join(root, str(pid)))
-    fields = ["S"] + ["0"] * 18 + [start_time] + ["0"] * 10
-    with open(os.path.join(root, str(pid), "stat"), "w") as handle:
-        handle.write(f"{pid} (claude) " + " ".join(fields))
+    fake_process(root, pid, start_time, argv=("claude",))
 
 
 class LivenessTests(IsolatedTestCase):
@@ -103,5 +100,6 @@ class SignalTests(IsolatedTestCase):
         self.assertEqual("protected", report["groups"][0]["status"])
         claude = report["extensions"]["claude_code"]
         self.assertFalse(claude["activity_detection"]["complete"])
-        self.assertIn("active-session-detection-incomplete", claude["mutation_blockers"])
+        self.assertEqual([], claude["mutation_blockers"])
+        self.assertTrue(report["capabilities"]["actions"]["delete"]["supported"])
         self.assertEqual("partial", report["capabilities"]["active_session_detection"])

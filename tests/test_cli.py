@@ -32,18 +32,24 @@ class ArgumentTests(IsolatedTestCase):
         for args in (("--older-than", "0d"), ("--older-than", "7"), ("--older-than", "1w"),
                      ("--older-than", "-3d"), ("--older-than", "36501d"), ("--keep-latest", "0"),
                      ("--keep-latest", "-1"), ("--keep-latest", "1.5"), ("--project", "parent"),
-                     ("--older-than", "7d", "--min-idle", "0h"), ("--older-than", "7d", "--action", "delete"),
-                     ("--older-than", "7d", "--apply")):
+                     ("--older-than", "7d", "--min-idle", "0h"), ("--older-than", "7d", "--action", "archive"),
+                     ("--older-than", "7d", "--action", "quarantine"), ("--older-than", "7d", "--save-plan", "p"),
+                     ("--older-than", "7d", "--apply"), ("--older-than", "7d", "--action", "delete", "--apply"),
+                     ("--apply-plan", "p", "--older-than", "7d"), ("--apply-plan", "p", "--json")):
             with self.subTest(args=args):
                 self.usage_error(*args)
 
-    def test_help_documents_read_only_scope_and_semantics(self) -> None:
+    def test_apply_without_a_plan_explains_the_saved_plan_workflow(self) -> None:
+        self.assertIn("requires a reviewed saved plan", self.usage_error("--older-than", "7d", "--action", "delete", "--apply"))
+
+    def test_help_documents_scope_and_semantics(self) -> None:
         out = io.StringIO()
         with redirect_stdout(out), self.assertRaises(SystemExit):
             cli.run(["--help"])
         text = out.getvalue()
-        for phrase in ("read-only", "intersection", "--keep-latest counts root groups", "never launches Claude Code",
-                       "no archive, quarantine, restore, or delete", "retained", "excluded"):
+        for phrase in ("read-only preview unless --apply-plan", "intersection", "--keep-latest counts root groups",
+                       "never launches Claude Code", "no archive, quarantine, or restore", "irreversible",
+                       "There is no --apply", "retained", "excluded"):
             self.assertIn(phrase, " ".join(text.split()))
 
     def test_missing_config_dir_is_a_safety_stop(self) -> None:
@@ -81,8 +87,11 @@ class OutputTests(IsolatedTestCase):
                          (report["schema"], report["schema_version"], report["agent"], report["mode"],
                           report["changes_made"]))
         actions = report["capabilities"]["actions"]
+        # The test platform has no process scan, so deletion is unsupported here.
         self.assertFalse(any(action["supported"] for action in actions.values()))
-        self.assertEqual("read-only-release", actions["quarantine"]["unsupported_reason"])
+        self.assertEqual("not-offered-by-backend", actions["quarantine"]["unsupported_reason"])
+        self.assertEqual("blocked-by-safety-requirements", actions["delete"]["unsupported_reason"])
+        self.assertTrue(actions["delete"]["requires_saved_plan"])
         self.assertIsNone(report["policy"]["requested_action"])
         self.assertEqual("root-group", report["policy"]["ranking_unit"])
         self.assertEqual("2026-09-25T12:00:00Z", report["policy"]["cutoff"])

@@ -14,17 +14,12 @@ from . import SCHEMA_NAME, SCHEMA_VERSION, TESTED_CLAUDE_CODE_VERSIONS, __versio
 from . import activity as activity_module
 from . import native_retention as native
 from .activity import ActivitySignals
+from .deletion import group_blockers, unit_targets
 from .discovery import Discovery, SessionGroup, SessionUnit
 from .policy import STATUS_ORDER, GroupDecision, Plan
 
 STATUSES = tuple(STATUS_ORDER)
 CLAUDE = "claude_code"
-
-MUTATION_BLOCKERS = (
-    "read-only-release",
-    "no-supported-claude-code-session-mutation-interface",
-    activity_module.MUTATION_BLOCKER,
-)
 
 ACTIVITY_TIMESTAMP = {
     "source": "max(transcript-mtime, session-artifact-mtimes, message-timestamps)",
@@ -33,20 +28,30 @@ ACTIVITY_TIMESTAMP = {
     "conservative": True,
 }
 
+# Capabilities that do not depend on the platform. Delete support is decided
+# at runtime by capabilities() from the activity signals.
 CAPABILITIES = {
     "actions": {
         "archive": {"supported": False, "reversibility": "agent-native", "requires_saved_plan": False,
                     "unsupported_reason": "not-offered-by-backend"},
         "quarantine": {"supported": False, "reversibility": "tool-managed", "requires_saved_plan": False,
-                       "unsupported_reason": "read-only-release"},
+                       "unsupported_reason": "not-offered-by-backend"},
         "delete": {"supported": False, "reversibility": "irreversible", "requires_saved_plan": True,
-                   "unsupported_reason": "not-offered-by-backend"},
+                   "unsupported_reason": "blocked-by-safety-requirements"},
     },
     "sizes": True,
     "titles": True,
     "pinning": False,
     "active_session_detection": "partial",
 }
+
+
+def capabilities(signals: ActivitySignals) -> dict[str, Any]:
+    """Capabilities as they are on this machine now: delete needs the Linux process scan."""
+    actions = {name: dict(entry) for name, entry in CAPABILITIES["actions"].items()}
+    if not signals.mutation_blockers:
+        actions["delete"].update(supported=True, unsupported_reason=None)
+    return {**CAPABILITIES, "actions": actions}
 
 
 def iso(value: dt.datetime | None) -> str | None:
@@ -100,37 +105,30 @@ def _session(
     }
 
 
-def _group_blockers(group: SessionGroup) -> list[str]:
-    blockers = set()
-    if any(unit.unknown_artifacts for unit in group.members):
-        blockers.add("unknown-associated-artifact")
-    if group.missing_links:
-        blockers.add("linked-session-not-found")
-    if any(unit.shared_data_links for unit in group.members):
-        blockers.add("cross-session-symlink")
-    return sorted(blockers)
-
-
-def _group(decision: GroupDecision, now: dt.datetime, retention, include_titles: bool) -> dict[str, Any]:
+def _group(
+    decision: GroupDecision, now: dt.datetime, retention, include_titles: bool, config, requested_action: str | None
+) -> dict[str, Any]:
     group = decision.group
     sessions = [_session(unit, group, now, retention, include_titles) for unit in group.members]
     risks = [s["extensions"][CLAUDE]["native_retention_risk"] for s in sessions]
+    left_in_place = sorted(path for unit in group.members for path in unit_targets(unit)[1])
     return {
         "group_id": group.group_id,
         "status": decision.status,
         "reasons": list(decision.reasons),
         "rank": decision.rank,
-        "proposed_action": None,
+        "proposed_action": requested_action if decision.status == "selected" else None,
         "last_activity": iso(group.last_activity),
         "last_activity_session_id": group.last_activity_session,
         "bytes": group.bytes,
         "session_count": len(group.members),
         "sessions": sessions,
-        "mutation_blockers": _group_blockers(group),
+        "mutation_blockers": group_blockers(group, config),
         "extensions": {
             CLAUDE: {
                 "native_retention_risk": native.worst_risk(risks),
                 "missing_links": list(group.missing_links),
+                "left_in_place_on_delete": left_in_place,
             }
         },
     }
@@ -210,6 +208,9 @@ def _activity_section(signals: ActivitySignals, min_idle_seconds: int) -> dict[s
             {"name": "background-session-records", "records": signals.job_records_read,
              "session_ids": len(signals.background_session_ids), "unreadable": list(signals.job_records_unreadable)},
             {"name": "recent-modification-guard", "min_idle_seconds": min_idle_seconds},
+            {"name": "claude-code-process-scan", "available": signals.process_scan.available,
+             "processes": len(signals.relevant_processes()),
+             "uninspectable_processes": signals.process_scan.uninspectable},
         ],
         "not_used": ["claude agents --json"],
         "limitations": list(activity_module.LIMITATIONS),
@@ -224,10 +225,14 @@ def build_report(
     retention: native.RetentionConfig,
     include_titles: bool,
     verbose_sources: bool = False,
+    requested_action: str | None = None,
 ) -> dict[str, Any]:
     now = plan.now
     policy = plan.policy
-    groups = [_group(decision, now, retention, include_titles) for decision in plan.decisions]
+    groups = [
+        _group(decision, now, retention, include_titles, discovery.config, requested_action)
+        for decision in plan.decisions
+    ]
     versions = sorted({v for unit in discovery.units for v in unit.claude_versions}, key=_version_key)
     warnings = [_notice(item.code, item.path) for item in discovery.warnings]
     if versions and versions[-1] not in TESTED_CLAUDE_CODE_VERSIONS:
@@ -257,13 +262,10 @@ def build_report(
             "min_idle_seconds": min_idle_seconds,
             "combination": "intersection",
             "ranking_unit": "root-group",
-            "requested_action": None,
+            "requested_action": requested_action,
         },
         "activity_timestamp": dict(ACTIVITY_TIMESTAMP),
-        "capabilities": {
-            **CAPABILITIES,
-            "actions": {name: dict(entry) for name, entry in CAPABILITIES["actions"].items()},
-        },
+        "capabilities": capabilities(signals),
         "totals": _totals(groups),
         "groups": groups,
         "warnings": sorted(warnings, key=lambda item: (item["code"], item["subject"] or "")),
@@ -274,7 +276,7 @@ def build_report(
                 "invoking_directory": policy.project_path,
                 "claude_code_versions_observed": versions,
                 "tested_claude_code_versions": list(TESTED_CLAUDE_CODE_VERSIONS),
-                "mutation_blockers": list(MUTATION_BLOCKERS),
+                "mutation_blockers": list(signals.mutation_blockers),
                 "native_retention": _native_section(retention, groups, verbose_sources),
                 "activity_detection": _activity_section(signals, min_idle_seconds),
             }

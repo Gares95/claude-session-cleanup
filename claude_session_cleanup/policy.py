@@ -137,7 +137,9 @@ def build_plan(
     now: dt.datetime,
     invoking_session_id: str | None = None,
     session_protections: Mapping[str, str] | None = None,
+    cutoff: dt.datetime | None = None,
 ) -> Plan:
+    """Evaluate ``policy``. ``cutoff`` replaces ``now - older_than`` when a saved plan is re-checked."""
     if policy.older_than is None and policy.keep_latest is None:
         raise CleanupError("at least one of --older-than or --keep-latest is required")
     if policy.keep_latest is not None and policy.keep_latest < 1:
@@ -146,6 +148,8 @@ def build_plan(
         raise CleanupError("project scope must be 'current' or 'all'")
     if now.tzinfo is None:
         raise CleanupError("the planning clock must be timezone-aware")
+    if cutoff is not None and (policy.older_than is None or cutoff.tzinfo is None):
+        raise CleanupError("a fixed cutoff needs an age policy and a timezone")
     protections = dict(session_protections or {})
     unknown_protections = set(protections.values()) - PROTECTION_REASONS
     if unknown_protections:
@@ -165,7 +169,8 @@ def build_plan(
             rankable.append(group)
 
     rankable.sort(key=lambda group: (-group.last_activity.timestamp(), group.group_id))
-    cutoff = now - policy.older_than if policy.older_than is not None else None
+    if cutoff is None and policy.older_than is not None:
+        cutoff = now - policy.older_than
     for rank, group in enumerate(rankable, start=1):
         member_ids = {unit.session_id for unit in group.members}
         protected: list[str] = []

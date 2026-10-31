@@ -35,6 +35,15 @@ STATUS_ROWS = (
     ("protected", "Protected"),
     ("excluded", "Excluded"),
 )
+BLOCKER_LABELS = {
+    "unknown-associated-artifact": "unrecognized file named after the session elsewhere in the config directory",
+    "linked-session-not-found": "a linked session is missing",
+    "cross-session-symlink": "shares data with another session through links",
+    "unrecognized-session-data": "unrecognized entry in the session's data",
+    "storage-inside-project": "the configuration directory is inside the project",
+    "active-session-detection-incomplete": "no process scan on this platform",
+    "process-scan-incomplete": "some of your processes could not be inspected",
+}
 RISK_LABELS = {
     "past-period": "older than the lowest configured period",
     "approaching": "within 7 days of the lowest configured period",
@@ -124,7 +133,10 @@ def render_text(
     local = (lambda value: value.astimezone(tz)) if tz is not None else (lambda value: value.astimezone())
     policy = report["policy"]
     totals = report["totals"]
-    lines: list[str] = ["Claude Code session retention preview (read-only)", ""]
+    action = policy["requested_action"]
+    heading = "Claude Code session deletion preview (nothing is deleted)" if action == "delete" \
+        else "Claude Code session retention preview (read-only)"
+    lines: list[str] = [heading, ""]
 
     scope_info = report["scope"]
     scope = f"current — {_path(scope_info['path'])}" if scope_info["mode"] == "current" else "all projects"
@@ -137,7 +149,8 @@ def render_text(
         + " · keep latest "
         + (f"{keep} root groups" if keep is not None else "not set")
         + " · min idle "
-        + format_duration(policy["min_idle_seconds"]),
+        + format_duration(policy["min_idle_seconds"])
+        + (f" · action {action}" if action else ""),
         f"Clock:    {local(now).strftime('%Y-%m-%d %H:%M %Z').strip()}",
         "",
     ]
@@ -168,6 +181,9 @@ def render_text(
                 f"{format_bytes(group['bytes']):>8}  {_session_id(group['group_id'], full_ids):<8}  "
                 f"{_title(root, show_titles)}".rstrip()
             )
+            if action and status == "selected" and group["mutation_blockers"]:
+                lines.append("      cannot be deleted: "
+                             + "; ".join(BLOCKER_LABELS.get(b, b) for b in group["mutation_blockers"]))
             if verbose:
                 lines.append("      reasons: " + ", ".join(REASON_LABELS.get(r, r) for r in group["reasons"]))
                 risk = group["extensions"]["claude_code"]["native_retention_risk"]
@@ -193,7 +209,8 @@ def render_text(
                         lines.append(f"        unknown associated artifact: {_path(item)}")
         lines.append("")
 
-    table("selected", "Selected (eligible for a future cleanup action; nothing is changed):")
+    table("selected", "Selected for permanent deletion (nothing is deleted until a reviewed plan is applied):"
+          if action == "delete" else "Selected (eligible for cleanup; nothing is changed):")
     if verbose:
         table("retained", "Retained by the policy:")
         table("protected", "Protected by a safety rule:")
@@ -246,9 +263,53 @@ def render_text(
         lines.append(f"Warning: {warning['code']}{subject}")
     if report["warnings"]:
         lines.append("")
-    lines.append(
-        "Active-session detection is incomplete (registry and file activity only); "
-        "cleanup actions are not available in this version."
-    )
+    delete = report["capabilities"]["actions"]["delete"]
+    if delete["supported"]:
+        lines.append("Deletion: available here, only through a reviewed saved plan "
+                     "(--action delete --save-plan PATH, then --apply-plan PATH).")
+    else:
+        blockers = claude["mutation_blockers"]
+        lines.append("Deletion: unavailable here ("
+                     + "; ".join(BLOCKER_LABELS.get(b, b) for b in blockers) + "); previews only.")
+    lines.append("Active-session detection is partial; see docs/safety-model.md.")
     lines.append("No changes made.")
+    return "\n".join(lines) + "\n"
+
+
+def render_apply(
+    document: dict[str, Any], *, deleted: list[str], remaining: list[str], error: str | None, full_ids: bool = False
+) -> str:
+    """Summary of an applied (or stopped) deletion plan."""
+    policy = document["policy"]
+    scope = f"current — {_path(policy['project_path'])}" if policy["project_mode"] == "current" else "all projects"
+    done = set(deleted)
+    lines = [
+        "Claude Code session deletion (permanent)",
+        "",
+        f"Plan:     {document['plan_id'][:8]} saved {document['created_at'][:19].replace('T', ' ')} UTC",
+        f"Project:  {scope}",
+        "",
+    ]
+    for group in document["groups"]:
+        paths = [t["path"] for t in group["targets"]]
+        removed = sum(1 for path in paths if path in done)
+        state = "deleted" if removed == len(paths) else ("partly deleted" if removed else "not deleted")
+        lines.append(
+            f"  {_session_id(group['group_id'], full_ids):<8}  {state:<14} "
+            f"{_plural(len(group['members']), 'session')}, {removed}/{len(paths)} files and directories"
+        )
+    left = sorted({path for group in document["groups"] for path in group["left_in_place"]})
+    if left:
+        lines += ["", "Left in place (not attributable to a single session):"]
+        lines += [f"  {_path(path)}" for path in left]
+    lines.append("")
+    if error is None and not remaining:
+        lines.append(f"Deleted {len(deleted)} files and directories in {_plural(len(document['groups']), 'group')}.")
+    else:
+        lines.append(f"STOPPED: {_path(error or 'some targets still exist')}")
+        lines.append(f"Deleted {len(deleted)}; not deleted {len(remaining)}:")
+        lines += [f"  {_path(path)}" for path in remaining[:50]]
+        if len(remaining) > 50:
+            lines.append(f"  … and {len(remaining) - 50} more")
+        lines.append("Preview again before deciding what to do with the remaining data.")
     return "\n".join(lines) + "\n"

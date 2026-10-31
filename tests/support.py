@@ -77,6 +77,19 @@ def _wrap(function):
     return guarded
 
 
+def _wrap_at(function):
+    """Guard a removal that may be relative to a directory descriptor."""
+
+    def guarded(path, *args, dir_fd=None, **kwargs):
+        if dir_fd is not None and os.path.isdir("/proc/self/fd"):
+            _check(os.path.join(os.readlink(f"/proc/self/fd/{dir_fd}"), os.fsdecode(path)))
+        elif dir_fd is None:
+            _check(path)
+        return function(path, *args, dir_fd=dir_fd, **kwargs)
+
+    return guarded
+
+
 def _forbid(name):
     def refuse(*args, **kwargs):
         raise GuardViolation(f"test attempted {name}")
@@ -100,6 +113,11 @@ class IsolatedTestCase(unittest.TestCase):
             mock.patch.object(os, "listdir", _wrap(os.listdir)),
             mock.patch.object(os, "open", _wrap(os.open)),
             mock.patch.object(builtins, "open", _wrap(builtins.open)),
+            mock.patch.object(os, "unlink", _wrap_at(os.unlink)),
+            mock.patch.object(os, "remove", _wrap_at(os.remove)),
+            mock.patch.object(os, "rmdir", _wrap_at(os.rmdir)),
+            mock.patch.object(os, "replace", _wrap(os.replace)),
+            mock.patch.object(os, "rename", _wrap(os.rename)),
             mock.patch.object(subprocess, "Popen", _forbid("subprocess.Popen")),
             mock.patch.object(os, "system", _forbid("os.system")),
             mock.patch.object(os, "kill", _forbid("os.kill")),
@@ -153,6 +171,39 @@ requires_symlink_timestamps = unittest.skipUnless(
     os.utime in os.supports_follow_symlinks,
     "symbolic-link timestamps are not available",
 )
+
+
+def fake_process(
+    root: str,
+    pid: int,
+    start_time: str = "4242",
+    *,
+    argv: tuple[str, ...] = ("claude",),
+    exe: str | None = None,
+    cwd: str | None = None,
+    environ: dict[str, str] | None = None,
+    ppid: int = 1,
+    open_files: tuple[str, ...] = (),
+    state: str = "S",
+) -> str:
+    """Create a /proc/<pid> entry with the files the process scan reads."""
+    base = os.path.join(root, str(pid))
+    os.makedirs(os.path.join(base, "fd"), exist_ok=True)
+    fields = [state, str(ppid)] + ["0"] * 17 + [start_time] + ["0"] * 10
+    with open(os.path.join(base, "stat"), "w") as handle:
+        handle.write(f"{pid} (proc) " + " ".join(fields))
+    with open(os.path.join(base, "cmdline"), "wb") as handle:
+        handle.write(b"".join(arg.encode() + b"\0" for arg in argv))
+    if environ is not None:
+        with open(os.path.join(base, "environ"), "wb") as handle:
+            handle.write(b"".join(f"{k}={v}".encode() + b"\0" for k, v in environ.items()))
+    if exe is not None:
+        os.symlink(exe, os.path.join(base, "exe"))
+    if cwd is not None:
+        os.symlink(cwd, os.path.join(base, "cwd"))
+    for number, target in enumerate(open_files, start=3):
+        os.symlink(target, os.path.join(base, "fd", str(number)))
+    return base
 
 
 def session_uuid(number: int) -> str:
