@@ -24,9 +24,10 @@ f.session(session_id=session_uuid(0xaaaa0004000040008000000000000004), age=3*DAY
 f.session(session_id=session_uuid(0xaaaa0005000040008000000000000005), age=26*DAY, ai_title="Upgrade build tooling")
 f.session(session_id=session_uuid(0xaaaa0006000040008000000000000006), prompt=None, age=50*DAY)
 os.makedirs(os.path.join(f.default_project, ".claude"), exist_ok=True)
+os.makedirs(os.path.join(root, "proc"))  # an empty process table: no Claude Code process is running
 for name, args in (("preview.txt", ["--older-than", "30d", "--keep-latest", "2"]), ("preview-verbose.txt", ["--older-than", "30d", "--keep-latest", "2", "--verbose"]), ("preview.json", ["--older-than", "30d", "--keep-latest", "2", "--json", "--include-titles"])):
     out = io.StringIO()
-    cli.run(["--now", NOW_ARG, *args], environment={"CLAUDE_CONFIG_DIR": f.config, "HOME": root}, cwd=f.default_project, stdout=out, tz=dt.timezone.utc, managed_dirs=(), liveness_options={"platform": "linux", "proc_root": os.path.join(root, "noproc")})
+    cli.run(["--now", NOW_ARG, *args], environment={"CLAUDE_CONFIG_DIR": f.config, "HOME": root}, cwd=f.default_project, stdout=out, tz=dt.timezone.utc, managed_dirs=(), liveness_options={"platform": "linux", "proc_root": os.path.join(root, "proc"), "pid_domain": None})
     text = out.getvalue().replace(root, "/home/user").replace("-" + root.replace("/", "-").lstrip("-"), "-home-user")
     text = text.replace("(--config-dir)", "(CLAUDE_CONFIG_DIR)")
     with open(os.path.join(out_dir, name), "w", encoding="utf-8") as handle:

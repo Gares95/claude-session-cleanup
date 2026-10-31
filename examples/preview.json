@@ -41,13 +41,13 @@
         "supported": false,
         "reversibility": "tool-managed",
         "requires_saved_plan": false,
-        "unsupported_reason": "read-only-release"
+        "unsupported_reason": "not-offered-by-backend"
       },
       "delete": {
-        "supported": false,
+        "supported": true,
         "reversibility": "irreversible",
         "requires_saved_plan": true,
-        "unsupported_reason": "not-offered-by-backend"
+        "unsupported_reason": null
       }
     },
     "sizes": true,
@@ -149,7 +149,8 @@
       "extensions": {
         "claude_code": {
           "native_retention_risk": "past-period",
-          "missing_links": []
+          "missing_links": [],
+          "left_in_place_on_delete": []
         }
       }
     },
@@ -210,7 +211,8 @@
       "extensions": {
         "claude_code": {
           "native_retention_risk": "past-period",
-          "missing_links": []
+          "missing_links": [],
+          "left_in_place_on_delete": []
         }
       }
     },
@@ -270,7 +272,8 @@
       "extensions": {
         "claude_code": {
           "native_retention_risk": "past-period",
-          "missing_links": []
+          "missing_links": [],
+          "left_in_place_on_delete": []
         }
       }
     },
@@ -329,7 +332,8 @@
       "extensions": {
         "claude_code": {
           "native_retention_risk": "within-period",
-          "missing_links": []
+          "missing_links": [],
+          "left_in_place_on_delete": []
         }
       }
     },
@@ -387,7 +391,8 @@
       "extensions": {
         "claude_code": {
           "native_retention_risk": "approaching",
-          "missing_links": []
+          "missing_links": [],
+          "left_in_place_on_delete": []
         }
       }
     },
@@ -441,7 +446,8 @@
       "extensions": {
         "claude_code": {
           "native_retention_risk": "past-period",
-          "missing_links": []
+          "missing_links": [],
+          "left_in_place_on_delete": []
         }
       }
     }
@@ -456,13 +462,11 @@
         "2.1.310"
       ],
       "tested_claude_code_versions": [
-        "2.1.310"
+        "2.1.310",
+        "2.1.314",
+        "2.1.316"
       ],
-      "mutation_blockers": [
-        "read-only-release",
-        "no-supported-claude-code-session-mutation-interface",
-        "active-session-detection-incomplete"
-      ],
+      "mutation_blockers": [],
       "native_retention": {
         "disclaimer": "Estimates only. Claude Code deletes transcripts on its own schedule; this tool cannot predict exact deletion times or prevent the deletion.",
         "observed": {
@@ -526,16 +530,22 @@
           {
             "name": "recent-modification-guard",
             "min_idle_seconds": 3600
+          },
+          {
+            "name": "claude-code-process-scan",
+            "available": true,
+            "processes": 0,
+            "uninspectable_processes": 0
           }
         ],
         "not_used": [
           "claude agents --json"
         ],
         "limitations": [
-          "Sessions using a different CLAUDE_CONFIG_DIR or running on another machine are not visible.",
-          "Claude Code versions or surfaces that do not write sessions/<pid>.json are not visible.",
-          "Process liveness is verified against the recorded start time on Linux only; elsewhere a matching PID is treated as possibly running.",
-          "claude agents --json is deliberately not invoked: previews never launch Claude Code."
+          "Sessions using a different CLAUDE_CONFIG_DIR, running on another machine, or in another PID namespace (for example a container sharing this directory) are not visible.",
+          "Process liveness is verified against the recorded start time and the registry pidDomain on Linux only; elsewhere a matching PID is treated as possibly running.",
+          "The Claude Code process scan runs on Linux only; on other platforms only the registry, background records, and file activity are used, and deletion is unsupported.",
+          "claude agents --json is deliberately not invoked: the tool never launches Claude Code."
         ]
       }
     }

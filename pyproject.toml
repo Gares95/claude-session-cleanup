@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "claude-session-cleanup"
 version = "1.0.0"
-description = "Read-only inspection and retention planning for local Claude Code sessions"
+description = "Retention previews and reviewed permanent deletion for local Claude Code sessions"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
