@@ -24,3 +24,7 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: "1"
         run: python -m unittest discover -s tests -v
+      - name: Run the test suite against the generated Agensi script
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python tools/test_agensi_bundle.py
