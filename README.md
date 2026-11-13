@@ -370,6 +370,10 @@ no dependencies. It also runs the agent-neutral conformance fixtures in
 runs against its own engine (see
 [contract/compatibility-matrix.md](contract/compatibility-matrix.md)).
 
+`python3 tools/build_agensi.py` builds a standalone single-script package
+of this skill for the Agensi marketplace from the same source; see
+[docs/agensi-packaging.md](docs/agensi-packaging.md).
+
 ## License
 
 MIT. Copyright (c) 2026 Gares95.
